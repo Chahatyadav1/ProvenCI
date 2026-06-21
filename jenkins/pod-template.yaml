@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    jenkins-agent: slsa-pipeline
+spec:
+  serviceAccountName: jenkins-build-agent   # scoped IAM/RBAC — no cluster-admin
+  restartPolicy: Never
+  containers:
+    - name: git
+      image: alpine/git:2.45.2
+      tty: true
+
+    - name: sonar-scanner
+      image: sonarsource/sonar-scanner-cli:5.0
+      tty: true
+
+    - name: owasp-dependency-check
+      image: owasp/dependency-check:9.1.0
+      tty: true
+
+    - name: docker
+      image: docker:28-dind
+      tty: true
+      securityContext:
+         privileged: true
+
+    - name: trivy
+      image: aquasec/trivy:0.52.2
+      tty: true
+
+    - name: syft
+      image: anchore/syft:v1.7.0
+      tty: true
+
+    - name: grype
+      image: anchore/grype:v0.79.1
+      tty: true
+
+    - name: cosign
+      image: gcr.io/projectsigstore/cosign:v2.2.4
+      tty: true
