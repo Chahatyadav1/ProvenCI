@@ -16,7 +16,7 @@ spec:
                 - Pod
       verifyImages:
         - imageReferences:
-            - 'docker.io/chahatyadav1/slsa*'
+            - 'docker.io/chahatyadav1/dashboard*'
           failureAction: Enforce
           attestors:
             - count: 1

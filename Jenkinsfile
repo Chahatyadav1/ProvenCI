@@ -1,49 +1,44 @@
 
 pipeline {
-agent {
-kubernetes {
-yamlFile 'jenkins/pod-template.yaml'
-}
-}
+    agent {
+        kubernetes {
+            yamlFile 'jenkins/pod-template.yaml'
+        }
+    }
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        timeout(time: 30, unit: 'MINUTES')
+    }
 
-```
-options {
-    timestamps()
-    disableConcurrentBuilds()
-    timeout(time: 30, unit: 'MINUTES')
-}
+    environment {
+        REGISTRY            = 'docker.io/chahatyadav1/sscsp'
+        IMAGE_TAG           = "${env.GIT_COMMIT.take(8)}"
+        IMAGE_REF           = "${REGISTRY}:${IMAGE_TAG}"
 
-environment {
-    REGISTRY            = "docker.io/chahatyadav1/sscsp"
-    IMAGE_TAG           = "${env.GIT_COMMIT.take(8)}"
-    IMAGE_REF           = "${REGISTRY}:${IMAGE_TAG}"
-    
-    KMS_ARN             = credentials('kms-arn')
-    SONAR_TOKEN         = credentials('sonarqube-token')
-    REGISTRY_CREDS      = credentials('container-registry-creds')
-    SLACK_WEBHOOK       = credentials('slack-webhook-url')
+        KMS_ARN             = credentials('kms-arn')
+        SONAR_TOKEN         = credentials('sonarqube-token')
+        REGISTRY_CREDS      = credentials('container-registry-creds')
+        SLACK_WEBHOOK       = credentials('slack-webhook-url')
 
-    COSIGN_EXPERIMENTAL = "1"
-}
+        COSIGN_EXPERIMENTAL = '1'
+    }
 
-stages {
-
+    stages {
         stage('SAST - SonarQube') {
             steps {
-                container('sonar-scanner'){
-                sh 'sleep 5s'
-                withSonarQubeEnv('SONAR_TOKEN') {
-                    sh 'echo "DEBUG SONAR_HOST_URL=${SONAR_HOST_URL}"'
-                    sh """$SONAR_SCANNER_HOME/bin/sonar-scanner \
+                container('sonar-scanner') {
+                    sh 'sleep 5s'
+                    withSonarQubeEnv('SONAR_TOKEN') {
+                        sh """$SONAR_SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectKey=World-Countries-Project \
                         -Dsonar.sources=app.js \
                         -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
                         -Dsonar.host.url=$SONAR_HOST_URL"""
+                    }
                 }
             }
         }
-    }
-
 
     //             stage('OWASP Dependency Check') {
     //                 environment {
@@ -80,51 +75,54 @@ stages {
     //     }
     // }
 
-    stage('Build Image') {
-        steps {
-            container('docker') {
+        stage('Build Image') {
+            steps {
+                container('docker') {
                     sh 'docker build -t ${IMAGE_REF} .'
-                sh '''
+                    sh '''
                     docker save ${IMAGE_REF} -o image.tar
                 '''
+                }
             }
         }
-    }
 
-    stage('Filesystem / Image Scan — Trivy') {
-        steps {
-            container('trivy') {
-                sh '''
+        stage('Filesystem / Image Scan — Trivy') {
+            steps {
+                container('trivy') {
+                    sh '''
                     trivy image \
                       --input image.tar \
                       --severity HIGH,CRITICAL \
                       --exit-code 1 \
                       --format table
                 '''
-            }
-        }
-    }
-
-        stage('Push Docker Image') {
-            steps {
-                container(docker){
-                withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${IMAGE_REF}
-                    '''
                 }
             }
         }
-    }
 
-    stage('Generate SBOM — Syft') {
-        steps {
-            container('syft') {
-                sh '''
-                    syft ${IMAGE_REF} \
-                      -o spdx-json > sbom.spdx.json
-                '''
+        stage('Push Docker Image') {
+            steps {
+                container(docker) {
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${IMAGE_REF}
+                    '''
+                    }
+                }
+            }
+        }
+        stage('Attest SBOM — Cosign') {
+            steps {
+                container('cosign') {
+                    sh '''
+                cosign attest \
+                  --yes \
+                  --predicate sbom.spdx.json \
+                  --type spdx \
+                  ${IMAGE_REF}@${IMAGE_DIGEST}
+            '''
+                }
             }
         }
 
@@ -133,7 +131,7 @@ stages {
                 archiveArtifacts artifacts: 'sbom.spdx.json'
             }
         }
-    }
+}
 
     stage('SBOM Vulnerability Scan — Grype') {
         steps {
@@ -150,14 +148,16 @@ stages {
     stage('Sign Image — Cosign (Keyless)') {
         steps {
             container('cosign') {
-                 withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                sh '''
-                    cosign sign --key awskms:///$KMS_ARN         
+                withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh '''
+                    sudo apt install crane -y || true
+                    $DIGEST= crane digest ${IMAGE_REF}
+                    cosign sign --key awskms:///$KMS_ARN   ${IMAGE_REF}@${DIGEST}
                 '''
+                }
             }
         }
     }
-}
 
     stage('Attest SBOM — Cosign') {
         steps {
@@ -187,7 +187,7 @@ stages {
         }
     }
 
-    stage('Update Image Tag'){
+    stage('Update Image Tag') {
         steps {
                 withCredentials([string(credentialsId: 'GitHub-token-text', variable: 'GITHUB_TOKEN')]) {
                     sh '''
@@ -198,7 +198,7 @@ stages {
                             --base main
                     '''
                 }
-            }
+        }
     }
     stage('Update GitOps Repo (ArgoCD Trigger)') {
         steps {
@@ -223,7 +223,6 @@ stages {
 }
 
 post {
-
     success {
         sh '''
             curl -X POST \
@@ -246,6 +245,3 @@ post {
         cleanWs()
     }
 }
-```
-
-

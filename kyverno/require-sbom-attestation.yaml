@@ -23,15 +23,19 @@ spec:
                 - monitoring
       verifyImages:
         - imageReferences:
-            - "docker.io/chahatyadav1/slsa:*"
+            - "docker.io/chahatyadav1/dashboard*"
           required: true
           attestors:
             - count: 1
               entries:
-                - keyless:
-                    subject: "https://jenkins.your-org.internal/*"
-                    issuer: "https://oauth2.sigstore.dev/auth"
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEe7NWS9kmWL+VgZ/fjiLLuou7Rp0C
+                      3B0D3BPzygjX6tQosAqt3s/LpZyiumJEuuKiJqNNLWrXjPrq03kp5ISIow==
+                      -----END PUBLIC KEY-----
                     rekor:
+                      ignoreTlog: true
                       url: https://rekor.sigstore.dev
           attestations:
             - predicateType: https://spdx.dev/Document
