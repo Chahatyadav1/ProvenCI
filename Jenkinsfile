@@ -188,9 +188,17 @@ stages {
     }
 
     stage('Update Image Tag'){
-        steps{
-            sh ''
-        }
+        steps {
+                withCredentials([string(credentialsId: 'GitHub-token-text', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        gh pr create \
+                            --repo Chahatyadav1/ProvenCI \
+                            --title "Updated Docker Image Tag - Build $BUILD_ID" \
+                            --body "This PR updates the docker image tag for build $BUILD_ID" \
+                            --base main
+                    '''
+                }
+            }
     }
     stage('Update GitOps Repo (ArgoCD Trigger)') {
         steps {
