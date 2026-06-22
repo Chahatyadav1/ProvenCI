@@ -23,58 +23,7 @@ pipeline {
 
         COSIGN_EXPERIMENTAL = '1'
     }
-
-    stages {
-        stage('SAST - SonarQube') {
-            steps {
-                container('sonar-scanner') {
-                    sh 'sleep 5s'
-                    withSonarQubeEnv('SONAR_TOKEN') {
-                        sh """$SONAR_SCANNER_HOME/bin/sonar-scanner \
-                        -Dsonar.projectKey=World-Countries-Project \
-                        -Dsonar.sources=app.js \
-                        -Dsonar.javascript.lcov.reportPaths=./coverage/lcov.info \
-                        -Dsonar.host.url=$SONAR_HOST_URL"""
-                    }
-                }
-            }
-        }
-
-    //             stage('OWASP Dependency Check') {
-    //                 environment {
-    //                     NVD_API_KEY = credentials('nvd-api-key')
-    //                 }
-    //                 steps {
-    //                     container('owasp-dependency-check'){
-    //                     dependencyCheck additionalArguments: """
-    //                         --scan './'
-    //                         --out './'
-    //                         --format 'ALL'
-    //                         --disableYarnAudit
-    //                         --prettyPrint
-    //                         --suppression dependency-check-suppression.xml
-    //                         --nvdApiKey $NVD_API_KEY
-    //                     """, odcInstallation: 'OWASP'
-
-    //                     dependencyCheckPublisher(
-    //                         failedTotalCritical: 1,
-    //                         pattern: 'dependency-check-report.xml',
-    //                         stopBuild: false
-    //                     )
-    //                 }
-    //             }
-    //         }
-
-    //     post {
-    //         always {
-    //             archiveArtifacts(
-    //                 artifacts: 'dependency-check-report.json',
-    //                 allowEmptyArchive: true
-    //             )
-    //         }
-    //     }
-    // }
-
+    stages{
         stage('Build Image') {
             steps {
                 container('docker') {
@@ -112,6 +61,18 @@ pipeline {
                 }
             }
         }
+stage('Sign Image — Cosign') {
+    steps {
+        container('cosign') {
+            sh '''
+                cosign sign \
+                  --yes \
+                  --key awskms://$KMS_ARN \
+                  ${IMAGE_REF}@${IMAGE_DIGEST}
+            '''
+        }
+    }
+}
         stage('Attest SBOM — Cosign') {
             steps {
                 container('cosign') {
@@ -145,7 +106,7 @@ pipeline {
         }
     }
 
-    stage('Sign Image — Cosign (Keyless)') {
+    stage('Sign Image — Cosign ') {
         steps {
             container('cosign') {
                 withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -220,7 +181,6 @@ pipeline {
             }
         }
     }
-}
 
 post {
     success {
@@ -244,4 +204,5 @@ post {
     always {
         cleanWs()
     }
+}
 }
