@@ -4,15 +4,10 @@ metadata:
   labels:
     jenkins-agent: slsa-pipeline
 spec:
-  serviceAccountName: jenkins-build-agent   # scoped IAM/RBAC — no cluster-admin
   restartPolicy: Never
   containers:
     - name: git
       image: alpine/git:2.45.2
-      tty: true
-
-    - name: sonar-scanner
-      image: sonarsource/sonar-scanner-cli:5.0
       tty: true
 
     - name: owasp-dependency-check

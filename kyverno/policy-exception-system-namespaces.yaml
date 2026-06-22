@@ -1,11 +1,3 @@
-# kyverno-policies/policy-exception-system-namespaces.yaml
-#
-# Cluster system components (Kyverno itself, ArgoCD, the monitoring stack)
-# pull images from public upstream registries we don't control and can't
-# sign ourselves. Rather than weakening the policy with broad excludes
-# inside the ClusterPolicy itself, we scope the exemption explicitly here
-# via a PolicyException — concept: PolicyException resource, scoped to
-# specific policies + rule names + namespaces.
 apiVersion: kyverno.io/v2beta1
 kind: PolicyException
 metadata:
@@ -27,5 +19,3 @@ spec:
           namespaces:
             - kube-system
             - kyverno
-            - argocd
-            - monitoring

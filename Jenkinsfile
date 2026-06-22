@@ -187,6 +187,11 @@ stages {
         }
     }
 
+    stage('Update Image Tag'){
+        steps{
+            sh ''
+        }
+    }
     stage('Update GitOps Repo (ArgoCD Trigger)') {
         steps {
             container('git') {
