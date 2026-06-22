@@ -1,0 +1,42 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-sbom-attestation
+spec:
+  validationFailureAction: Audit
+  background: true
+  webhookTimeoutSeconds: 30
+  rules:
+    - name: verify-sbom-attestation
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kyverno
+                - argocd
+                - monitoring
+      verifyImages:
+        - imageReferences:
+            - "docker.io/chahatyadav1/slsa:*"
+          required: true
+          attestors:
+            - count: 1
+              entries:
+                - keyless:
+                    subject: "https://jenkins.your-org.internal/*"
+                    issuer: "https://oauth2.sigstore.dev/auth"
+                    rekor:
+                      url: https://rekor.sigstore.dev
+          attestations:
+            - predicateType: https://spdx.dev/Document
+              conditions:
+                - all:
+                    - key: "{{ spdxVersion }}"
+                      operator: Equals
+                      value: "SPDX-2.3"

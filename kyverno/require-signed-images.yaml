@@ -1,0 +1,32 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-signed-images
+spec:
+  webhookConfiguration:
+    failurePolicy: Fail
+    timeoutSeconds: 30
+  background: false
+  rules:
+    - name: check-image
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+      verifyImages:
+        - imageReferences:
+            - 'docker.io/chahatyadav1/slsa*'
+          failureAction: Enforce
+          attestors:
+            - count: 1
+              entries:
+                - keys:
+                    publicKeys: |-
+                      -----BEGIN PUBLIC KEY-----
+                      MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEe7NWS9kmWL+VgZ/fjiLLuou7Rp0C
+                      3B0D3BPzygjX6tQosAqt3s/LpZyiumJEuuKiJqNNLWrXjPrq03kp5ISIow==
+                      -----END PUBLIC KEY-----
+                    rekor:
+                      ignoreTlog: true
+                      url: https://rekor.sigstore.dev

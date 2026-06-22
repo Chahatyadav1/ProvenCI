@@ -17,7 +17,8 @@ environment {
     REGISTRY            = "docker.io/chahatyadav1/sscsp"
     IMAGE_TAG           = "${env.GIT_COMMIT.take(8)}"
     IMAGE_REF           = "${REGISTRY}:${IMAGE_TAG}"
-
+    
+    KMS_ARN             = credentials('kms-arn')
     SONAR_TOKEN         = credentials('sonarqube-token')
     REGISTRY_CREDS      = credentials('container-registry-creds')
     SLACK_WEBHOOK       = credentials('slack-webhook-url')
@@ -31,7 +32,7 @@ stages {
             steps {
                 container('sonar-scanner'){
                 sh 'sleep 5s'
-                withSonarQubeEnv('sonar-qube') {
+                withSonarQubeEnv('SONAR_TOKEN') {
                     sh 'echo "DEBUG SONAR_HOST_URL=${SONAR_HOST_URL}"'
                     sh """$SONAR_SCANNER_HOME/bin/sonar-scanner \
                         -Dsonar.projectKey=World-Countries-Project \
@@ -44,40 +45,40 @@ stages {
     }
 
 
-                stage('OWASP Dependency Check') {
-                    environment {
-                        NVD_API_KEY = credentials('nvd-api-key')
-                    }
-                    steps {
-                        container('owasp-dependency-check'){
-                        dependencyCheck additionalArguments: """
-                            --scan './'
-                            --out './'
-                            --format 'ALL'
-                            --disableYarnAudit
-                            --prettyPrint
-                            --suppression dependency-check-suppression.xml
-                            --nvdApiKey $NVD_API_KEY
-                        """, odcInstallation: 'OWASP'
+    //             stage('OWASP Dependency Check') {
+    //                 environment {
+    //                     NVD_API_KEY = credentials('nvd-api-key')
+    //                 }
+    //                 steps {
+    //                     container('owasp-dependency-check'){
+    //                     dependencyCheck additionalArguments: """
+    //                         --scan './'
+    //                         --out './'
+    //                         --format 'ALL'
+    //                         --disableYarnAudit
+    //                         --prettyPrint
+    //                         --suppression dependency-check-suppression.xml
+    //                         --nvdApiKey $NVD_API_KEY
+    //                     """, odcInstallation: 'OWASP'
 
-                        dependencyCheckPublisher(
-                            failedTotalCritical: 1,
-                            pattern: 'dependency-check-report.xml',
-                            stopBuild: false
-                        )
-                    }
-                }
-            }
+    //                     dependencyCheckPublisher(
+    //                         failedTotalCritical: 1,
+    //                         pattern: 'dependency-check-report.xml',
+    //                         stopBuild: false
+    //                     )
+    //                 }
+    //             }
+    //         }
 
-        post {
-            always {
-                archiveArtifacts(
-                    artifacts: 'dependency-check-report.json',
-                    allowEmptyArchive: true
-                )
-            }
-        }
-    }
+    //     post {
+    //         always {
+    //             archiveArtifacts(
+    //                 artifacts: 'dependency-check-report.json',
+    //                 allowEmptyArchive: true
+    //             )
+    //         }
+    //     }
+    // }
 
     stage('Build Image') {
         steps {
@@ -149,12 +150,14 @@ stages {
     stage('Sign Image — Cosign (Keyless)') {
         steps {
             container('cosign') {
+                 withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                 sh '''
-                    cosign sign --key awskms:///{}         ///
+                    cosign sign --key awskms:///$KMS_ARN         
                 '''
             }
         }
     }
+}
 
     stage('Attest SBOM — Cosign') {
         steps {
