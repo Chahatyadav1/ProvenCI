@@ -18,7 +18,6 @@ pipeline {
 
         KMS_ARN             = credentials('kms-arn')
         SONAR_TOKEN         = credentials('sonarqube-token')
-        REGISTRY_CREDS      = credentials('container-registry-creds')
         SLACK_WEBHOOK       = credentials('slack-webhook-url')
 
         COSIGN_EXPERIMENTAL = '1'
@@ -61,9 +60,27 @@ pipeline {
                 }
             }
         }
+
+        stage('Get Image Digest') {
+    steps {
+        container('crane') {
+            script {
+                env.IMAGE_DIGEST = sh(
+                    script: "crane digest ${IMAGE_REF}",
+                    returnStdout: true
+                ).trim()
+
+                echo "Digest: ${IMAGE_DIGEST}"
+                echo "Image: ${IMAGE_REF}@${IMAGE_DIGEST}"
+            }
+        }
+    }
+}
 stage('Sign Image — Cosign') {
     steps {
+
         container('cosign') {
+            withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
             sh '''
                 cosign sign \
                   --yes \
@@ -73,9 +90,11 @@ stage('Sign Image — Cosign') {
         }
     }
 }
+}
         stage('Attest SBOM — Cosign') {
             steps {
                 container('cosign') {
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                     sh '''
                 cosign attest \
                   --yes \
@@ -86,7 +105,7 @@ stage('Sign Image — Cosign') {
                 }
             }
         }
-
+        }
         post {
             always {
                 archiveArtifacts artifacts: 'sbom.spdx.json'

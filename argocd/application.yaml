@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/argoproj/k8s
+    repoURL: https://github.com/Chahatyadav1/ProvenCI.git
     path: manifests/cluster-install
     targetRevision: stable
   destination:

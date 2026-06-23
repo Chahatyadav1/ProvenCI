@@ -6,32 +6,95 @@ metadata:
 spec:
   restartPolicy: Never
   containers:
+
     - name: git
       image: alpine/git:2.45.2
       tty: true
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "200m"
+          memory: "128Mi"
+
+    - name: crane
+      image: gcr.io/go-containerregistry/crane:debug
+      command: [sleep]
+      args: ["999999"]
+      tty: true
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "500m"
+          memory: "256Mi"
 
     - name: owasp-dependency-check
       image: owasp/dependency-check:9.1.0
       tty: true
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "512Mi"
+        limits:
+          cpu: "1000m"
+          memory: "1536Mi"
 
     - name: docker
       image: docker:28-dind
       tty: true
       securityContext:
-         privileged: true
+        privileged: true
+      resources:
+        requests:
+          cpu: "200m"
+          memory: "256Mi"
+        limits:
+          cpu: "2000m"
+          memory: "2Gi"
 
     - name: trivy
       image: aquasec/trivy:0.52.2
       tty: true
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
 
     - name: syft
       image: anchore/syft:v1.7.0
       tty: true
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
 
     - name: grype
       image: anchore/grype:v0.79.1
       tty: true
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
 
     - name: cosign
       image: gcr.io/projectsigstore/cosign:v2.2.4
       tty: true
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "64Mi"
+        limits:
+          cpu: "200m"
+          memory: "128Mi"
