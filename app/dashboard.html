@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecurePipe — CI/CD Security Suite</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --ink:#0a0a0a;--paper:#f5f2eb;--accent:#c8441a;--mid:#6b6b6b;
+  --line:rgba(10,10,10,0.12);--mono:'Space Mono',monospace;--sans:'Space Grotesk',sans-serif;
+  --pass:#1a7a3c;--fail:#b91c1c;--warn:#92600a;
+}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);min-height:100vh;}
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh;}
+
+/* SIDEBAR */
+.sidebar{border-right:1.5px solid var(--ink);padding:28px 0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.brand{padding:0 24px 24px;border-bottom:1px solid var(--line);}
+.brand-mark{font-family:var(--mono);font-size:11px;letter-spacing:0.15em;color:var(--mid);text-transform:uppercase;margin-bottom:6px;}
+.brand-name{font-size:17px;font-weight:700;line-height:1.2;letter-spacing:-0.02em;}
+.brand-name span{color:var(--accent);}
+.nav{padding:20px 0;flex:1;}
+.nav-section{padding:6px 24px 4px;font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--mid);text-transform:uppercase;margin-top:8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 24px;font-size:13px;font-weight:500;cursor:pointer;border-left:3px solid transparent;transition:all 0.15s;color:var(--ink);user-select:none;}
+.nav-item:hover{background:rgba(10,10,10,0.04);border-left-color:var(--line);}
+.nav-item.active{border-left-color:var(--accent);background:rgba(200,68,26,0.06);color:var(--accent);}
+.nav-item .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.sidebar-footer{padding:16px 24px;border-top:1px solid var(--line);font-family:var(--mono);font-size:10px;color:var(--mid);}
+
+/* MAIN */
+.main{overflow-y:auto;}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 36px;border-bottom:1.5px solid var(--ink);position:sticky;top:0;background:var(--paper);z-index:10;}
+.topbar-title{font-family:var(--mono);font-size:12px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);}
+.topbar-run{display:flex;align-items:center;gap:10px;}
+.run-btn{font-family:var(--mono);font-size:11px;letter-spacing:0.08em;padding:8px 18px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);cursor:pointer;transition:all 0.15s;text-transform:uppercase;}
+.run-btn:hover{background:var(--accent);border-color:var(--accent);}
+.run-btn.outline{background:transparent;color:var(--ink);}
+.run-btn.outline:hover{background:var(--ink);color:var(--paper);}
+.status-pill{font-family:var(--mono);font-size:10px;padding:4px 10px;border:1px solid;border-radius:20px;letter-spacing:0.06em;}
+.status-pill.pass{color:var(--pass);border-color:var(--pass);background:rgba(26,122,60,0.08);}
+.status-pill.fail{color:var(--fail);border-color:var(--fail);background:rgba(185,28,28,0.08);}
+.content{padding:36px;}
+.sec-head{display:flex;align-items:baseline;gap:16px;margin-bottom:24px;}
+.sec-num{font-family:var(--mono);font-size:11px;color:var(--mid);letter-spacing:0.1em;}
+.sec-title{font-size:22px;font-weight:700;letter-spacing:-0.03em;}
+.sec-line{flex:1;height:1px;background:var(--line);margin-left:8px;}
+
+/* METRICS */
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1.5px solid var(--ink);margin-bottom:36px;}
+.metric{padding:20px;border-right:1px solid var(--line);}
+.metric:last-child{border-right:none;}
+.metric-label{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--mid);margin-bottom:8px;}
+.metric-val{font-size:32px;font-weight:700;letter-spacing:-0.04em;line-height:1;}
+.metric-val.green{color:var(--pass);}
+.metric-val.red{color:var(--fail);}
+.metric-val.amber{color:var(--warn);}
+.metric-sub{font-size:11px;color:var(--mid);margin-top:4px;}
+
+/* TOOL CARDS */
+.tools-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-bottom:36px;}
+.tool-card{border:1.5px solid var(--ink);padding:24px;position:relative;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s;}
+.tool-card:hover{transform:translate(-2px,-2px);box-shadow:4px 4px 0 var(--ink);}
+.tool-tag{font-family:var(--mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--mid);margin-bottom:12px;}
+.tool-name{font-size:20px;font-weight:700;letter-spacing:-0.03em;margin-bottom:6px;}
+.tool-desc{font-size:12px;color:var(--mid);line-height:1.5;margin-bottom:16px;}
+.tool-badges{display:flex;gap:6px;flex-wrap:wrap;}
+.badge{font-family:var(--mono);font-size:9px;padding:3px 8px;border:1px solid var(--line);color:var(--mid);letter-spacing:0.06em;}
+.tool-corner{position:absolute;top:16px;right:16px;width:32px;height:32px;border:1.5px solid var(--line);border-radius:50%;display:flex;align-items:center;justify-content:center;}
+.tool-status-dot{width:10px;height:10px;border-radius:50%;}
+.tool-status-dot.pass{background:var(--pass);}
+.tool-status-dot.fail{background:var(--fail);}
+
+/* PIPELINE */
+.pipeline{border:1.5px solid var(--ink);margin-bottom:36px;overflow:hidden;}
+.pipeline-head{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,0.1);background:var(--ink);color:var(--paper);}
+.pipeline-head-text{font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;}
+.pipeline-stages{display:flex;align-items:stretch;}
+.stage{flex:1;padding:18px 16px;border-right:1px solid var(--line);}
+.stage:last-child{border-right:none;}
+.stage-num{font-family:var(--mono);font-size:9px;color:var(--mid);letter-spacing:0.1em;margin-bottom:8px;}
+.stage-name{font-size:13px;font-weight:600;margin-bottom:6px;}
+.stage-tool{font-family:var(--mono);font-size:10px;color:var(--accent);margin-bottom:10px;}
+.stage-items{display:flex;flex-direction:column;gap:3px;}
+.stage-item{font-size:10px;color:var(--mid);display:flex;align-items:center;gap:5px;}
+.stage-item::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--line);flex-shrink:0;}
+.stage-arrow{display:flex;align-items:center;color:var(--mid);font-size:18px;padding:0 4px;align-self:center;flex-shrink:0;}
+
+/* TESTS */
+.tests-table{width:100%;border-collapse:collapse;}
+.tests-table thead tr{border-bottom:1.5px solid var(--ink);background:rgba(10,10,10,0.03);}
+.tests-table th{font-family:var(--mono);font-size:10px;letter-spacing:0.1em;text-transform:uppercase;padding:12px 16px;text-align:left;color:var(--mid);font-weight:400;}
+.tests-table td{padding:11px 16px;font-size:12px;border-bottom:1px solid var(--line);vertical-align:top;}
+.tests-table tr:last-child td{border-bottom:none;}
+.tests-table tr.data-row:hover td{background:rgba(10,10,10,0.025);cursor:pointer;}
+.t-id{font-family:var(--mono);font-size:10px;color:var(--mid);}
+.t-name{font-weight:500;font-size:12px;line-height:1.4;}
+.t-tool{font-family:var(--mono);font-size:10px;color:var(--accent);}
+.t-pass{color:var(--pass);font-family:var(--mono);font-size:10px;letter-spacing:0.06em;}
+.t-fail{color:var(--fail);font-family:var(--mono);font-size:10px;letter-spacing:0.06em;}
+.t-cat{font-family:var(--mono);font-size:9px;padding:2px 6px;border:1px solid var(--line);color:var(--mid);display:inline-block;}
+.t-detail{font-size:11px;color:var(--mid);margin-top:3px;line-height:1.4;}
+.detail-panel{border-top:2px solid var(--accent);background:rgba(200,68,26,0.03);padding:12px 16px 14px;}
+.detail-pre{font-family:var(--mono);font-size:10px;line-height:1.7;color:var(--ink);white-space:pre-wrap;word-break:break-all;}
+
+/* FILTER TABS */
+.test-filter{display:flex;border:1.5px solid var(--ink);border-bottom:none;}
+.filter-tab{font-family:var(--mono);font-size:10px;padding:8px 16px;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;border-right:1px solid var(--line);background:transparent;color:var(--mid);transition:all 0.15s;border-top:none;border-left:none;border-bottom:none;}
+.filter-tab:last-child{border-right:none;}
+.filter-tab.active{background:var(--ink);color:var(--paper);}
+.filter-tab:hover:not(.active){background:rgba(10,10,10,0.05);}
+
+/* REQS */
+.reqs-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:36px;}
+.req-block{border:1.5px solid var(--ink);padding:20px;}
+.req-block-head{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:14px;}
+.req-item{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:12px;line-height:1.5;}
+.req-item:last-child{margin-bottom:0;}
+.req-check{font-family:var(--mono);font-size:11px;color:var(--pass);flex-shrink:0;margin-top:1px;}
+.req-x{font-family:var(--mono);font-size:11px;color:var(--fail);flex-shrink:0;margin-top:1px;}
+.req-sub{font-size:10px;color:var(--mid);margin-top:2px;}
+
+/* COVERAGE */
+.cov-section{border:1.5px solid var(--ink);padding:24px;margin-bottom:36px;}
+.cov-title{font-family:var(--mono);font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:var(--mid);margin-bottom:18px;}
+.cov-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.cov-label{font-size:12px;font-weight:500;width:140px;flex-shrink:0;}
+.cov-bar-bg{flex:1;height:6px;background:var(--line);}
+.cov-bar-fill{height:100%;}
+.cov-bar-fill.green{background:var(--pass);}
+.cov-bar-fill.amber{background:var(--warn);}
+.cov-pct{font-family:var(--mono);font-size:11px;width:40px;text-align:right;flex-shrink:0;}
+
+/* LOG */
+.log-block{border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);padding:20px;font-family:var(--mono);font-size:11px;line-height:1.8;margin-bottom:24px;height:320px;overflow-y:auto;}
+.log-line{display:flex;gap:12px;}
+.log-time{color:#555;flex-shrink:0;}
+.log-info{color:#7ec8a0;}
+.log-warn{color:#f0c060;}
+.log-err{color:#e07070;}
+.log-pass{color:#5cb870;}
+.log-msg{color:#ccc;}
+
+/* VIEWS */
+.view{display:none;}
+.view.active{display:block;}
+
+/* TICKER */
+.ticker{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--warn);animation:pulse 1.2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* TABLE WRAPPER */
+.table-wrap{border:1.5px solid var(--ink);}
+.table-wrap-notop{border:1.5px solid var(--ink);border-top:none;}
+
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--line);}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- ════ SIDEBAR ════ -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="brand-mark">SecurePipe</div>
+    <div class="brand-name">Supply Chain<br><span>Security Suite</span></div>
+  </div>
+  <nav class="nav">
+    <div class="nav-section">Overview</div>
+    <div class="nav-item active" onclick="showView('dashboard',this)"><span class="dot"></span>Dashboard</div>
+    <div class="nav-item" onclick="showView('pipeline',this)"><span class="dot"></span>Pipeline Stages</div>
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" onclick="showView('cosign',this)"><span class="dot"></span>Cosign</div>
+    <div class="nav-item" onclick="showView('syft',this)"><span class="dot"></span>Syft</div>
+    <div class="nav-item" onclick="showView('grype',this)"><span class="dot"></span>Grype</div>
+    <div class="nav-item" onclick="showView('kyverno',this)"><span class="dot"></span>Kyverno</div>
+    <div class="nav-section">Testing</div>
+    <div class="nav-item" onclick="showView('tests',this)"><span class="dot"></span>All Test Cases</div>
+    <div class="nav-item" onclick="showView('requirements',this)"><span class="dot"></span>Requirements</div>
+    <div class="nav-item" onclick="showView('coverage',this)"><span class="dot"></span>Coverage</div>
+    <div class="nav-item" onclick="showView('logs',this)"><span class="dot"></span>Run Logs</div>
+  </nav>
+  <div class="sidebar-footer">v2.4.1 &nbsp;·&nbsp; <span class="ticker"></span> live</div>
+</aside>
+
+<!-- ════ MAIN ════ -->
+<main class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div class="topbar-run">
+      <span class="status-pill pass">LAST RUN: PASSED</span>
+      <button class="run-btn outline" onclick="runTests()">↻ Re-run</button>
+      <button class="run-btn" onclick="showView('tests', null)">View Tests →</button>
+    </div>
+  </div>
+
+  <!-- ══ DASHBOARD ══ -->
+  <div class="content view active" id="view-dashboard">
+    <div class="sec-head"><span class="sec-num">00</span><h2 class="sec-title">Security Overview</h2><div class="sec-line"></div></div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Total Tests</div><div class="metric-val">48</div><div class="metric-sub">across 4 tools</div></div>
+      <div class="metric"><div class="metric-label">Passing</div><div class="metric-val green">44</div><div class="metric-sub">91.6% pass rate</div></div>
+      <div class="metric"><div class="metric-label">Failing</div><div class="metric-val red">4</div><div class="metric-sub">2 critical</div></div>
+      <div class="metric"><div class="metric-label">Req. Coverage</div><div class="metric-val amber">87%</div><div class="metric-sub">21 of 24</div></div>
+    </div>
+
+    <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">Tool Status</h2><div class="sec-line"></div></div>
+    <div class="tools-grid">
+      <div class="tool-card" onclick="showView('cosign',null)">
+        <div class="tool-corner"><div class="tool-status-dot pass"></div></div>
+        <div class="tool-tag">Stage 02 — Image Signing</div>
+        <div class="tool-name">Cosign</div>
+        <div class="tool-desc">Keyless container image signing and verification via Sigstore. Ensures images are tamper-proof from build to deploy.</div>
+        <div class="tool-badges"><span class="badge">KEYLESS</span><span class="badge">SIGSTORE</span><span class="badge">OCI</span><span class="badge">REKOR</span></div>
+      </div>
+      <div class="tool-card" onclick="showView('syft',null)">
+        <div class="tool-corner"><div class="tool-status-dot pass"></div></div>
+        <div class="tool-tag">Stage 03 — SBOM Generation</div>
+        <div class="tool-name">Syft</div>
+        <div class="tool-desc">Generates a Software Bill of Materials from container images and filesystems. Full dependency transparency for downstream scanning.</div>
+        <div class="tool-badges"><span class="badge">SPDX</span><span class="badge">CYCLONEDX</span><span class="badge">SYFT-JSON</span></div>
+      </div>
+      <div class="tool-card" onclick="showView('grype',null)">
+        <div class="tool-corner"><div class="tool-status-dot fail"></div></div>
+        <div class="tool-tag">Stage 04 — Vulnerability Scan</div>
+        <div class="tool-name">Grype</div>
+        <div class="tool-desc">Scans SBOMs and container images for known CVEs. Blocks pipeline on critical findings. 3 test failures need resolution.</div>
+        <div class="tool-badges"><span class="badge">CVE</span><span class="badge">CVSS</span><span class="badge">NVD</span><span class="badge">EPSS</span></div>
+      </div>
+      <div class="tool-card" onclick="showView('kyverno',null)">
+        <div class="tool-corner"><div class="tool-status-dot pass"></div></div>
+        <div class="tool-tag">Stage 05 — Policy Engine</div>
+        <div class="tool-name">Kyverno</div>
+        <div class="tool-desc">Kubernetes-native policy enforcement. Validates that only signed, scanned images are admitted to the cluster.</div>
+        <div class="tool-badges"><span class="badge">ADMIT</span><span class="badge">MUTATE</span><span class="badge">GENERATE</span></div>
+      </div>
+    </div>
+
+    <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Coverage Snapshot</h2><div class="sec-line"></div></div>
+    <div class="cov-section">
+      <div class="cov-title">Test coverage by tool</div>
+      <div class="cov-row"><div class="cov-label">Cosign</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:100%"></div></div><div class="cov-pct" style="color:var(--pass)">100%</div></div>
+      <div class="cov-row"><div class="cov-label">Syft</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:92%"></div></div><div class="cov-pct" style="color:var(--pass)">92%</div></div>
+      <div class="cov-row"><div class="cov-label">Grype</div><div class="cov-bar-bg"><div class="cov-bar-fill amber" style="width:75%"></div></div><div class="cov-pct" style="color:var(--warn)">75%</div></div>
+      <div class="cov-row"><div class="cov-label">Kyverno</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:88%"></div></div><div class="cov-pct" style="color:var(--pass)">88%</div></div>
+    </div>
+  </div>
+
+  <!-- ══ PIPELINE ══ -->
+  <div class="content view" id="view-pipeline">
+    <div class="sec-head"><span class="sec-num">01</span><h2 class="sec-title">Pipeline Stages</h2><div class="sec-line"></div></div>
+    <div class="pipeline">
+      <div class="pipeline-head"><div class="pipeline-head-text">CI/CD Security Gate — Execution Order</div></div>
+      <div class="pipeline-stages">
+        <div class="stage">
+          <div class="stage-num">01</div>
+          <div class="stage-name">Build</div>
+          <div class="stage-tool">docker build</div>
+          <div class="stage-items">
+            <div class="stage-item">Multi-stage Dockerfile</div>
+            <div class="stage-item">OCI image + digest</div>
+            <div class="stage-item">Non-root USER</div>
+          </div>
+        </div>
+        <div class="stage-arrow">→</div>
+        <div class="stage">
+          <div class="stage-num">02</div>
+          <div class="stage-name">Sign</div>
+          <div class="stage-tool">cosign sign</div>
+          <div class="stage-items">
+            <div class="stage-item">Keyless OIDC auth</div>
+            <div class="stage-item">Rekor transparency</div>
+            <div class="stage-item">Fulcio cert chain</div>
+          </div>
+        </div>
+        <div class="stage-arrow">→</div>
+        <div class="stage">
+          <div class="stage-num">03</div>
+          <div class="stage-name">SBOM</div>
+          <div class="stage-tool">syft scan</div>
+          <div class="stage-items">
+            <div class="stage-item">CycloneDX output</div>
+            <div class="stage-item">Attach to image</div>
+            <div class="stage-item">All layers scanned</div>
+          </div>
+        </div>
+        <div class="stage-arrow">→</div>
+        <div class="stage">
+          <div class="stage-num">04</div>
+          <div class="stage-name">Scan</div>
+          <div class="stage-tool">grype scan</div>
+          <div class="stage-items">
+            <div class="stage-item">CVE database</div>
+            <div class="stage-item">CRITICAL = fail</div>
+            <div class="stage-item">CVSS threshold</div>
+          </div>
+        </div>
+        <div class="stage-arrow">→</div>
+        <div class="stage">
+          <div class="stage-num">05</div>
+          <div class="stage-name">Enforce</div>
+          <div class="stage-tool">kyverno policy</div>
+          <div class="stage-items">
+            <div class="stage-item">Admission control</div>
+            <div class="stage-item">Verify signature</div>
+            <div class="stage-item">Block unsigned</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Stage Requirements</h2><div class="sec-line"></div></div>
+    <div class="reqs-grid">
+      <div class="req-block">
+        <div class="req-block-head">Build Stage</div>
+        <div class="req-item"><span class="req-check">✓</span><div><div>Dockerfile uses non-root USER</div><div class="req-sub">USER 1000:1000 present in final stage</div></div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Multi-stage build separates build and runtime</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Image digest pinned, not mutable tag</div></div>
+        <div class="req-item"><span class="req-x">✗</span><div><div>Base image from private registry</div><div class="req-sub">Currently using public docker.io — SEC-441</div></div></div>
+      </div>
+      <div class="req-block">
+        <div class="req-block-head">Sign Stage</div>
+        <div class="req-item"><span class="req-check">✓</span><div>Cosign keyless signing via OIDC</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Entry logged to Rekor transparency log</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Signature attached as OCI artifact</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Verification step runs post-push</div></div>
+      </div>
+      <div class="req-block">
+        <div class="req-block-head">SBOM + Scan Stage</div>
+        <div class="req-item"><span class="req-check">✓</span><div>SBOM generated in CycloneDX format</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>SBOM signed and attached to image</div></div>
+        <div class="req-item"><span class="req-x">✗</span><div><div>Grype blocks pipeline on CRITICAL CVE</div><div class="req-sub">--fail-on critical flag missing from step</div></div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>HIGH CVEs logged, do not block</div></div>
+      </div>
+      <div class="req-block">
+        <div class="req-block-head">Kyverno Enforce Stage</div>
+        <div class="req-item"><span class="req-check">✓</span><div>ClusterPolicy verifies image signature</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Unsigned images rejected at admission</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>SBOM attestation verified</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Policy exceptions require audit annotation</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COSIGN ══ -->
+  <div class="content view" id="view-cosign">
+    <div class="sec-head"><span class="sec-num">02</span><h2 class="sec-title">Cosign — Image Signing</h2><div class="sec-line"></div></div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Tests</div><div class="metric-val">12</div></div>
+      <div class="metric"><div class="metric-label">Passing</div><div class="metric-val green">12</div></div>
+      <div class="metric"><div class="metric-label">Failing</div><div class="metric-val">0</div></div>
+      <div class="metric"><div class="metric-label">Coverage</div><div class="metric-val green">100%</div></div>
+    </div>
+    <div class="table-wrap"><table class="tests-table"><thead><tr><th>ID</th><th>Test Name</th><th>Category</th><th>Status</th></tr></thead><tbody id="tb-cosign"></tbody></table></div>
+  </div>
+
+  <!-- ══ SYFT ══ -->
+  <div class="content view" id="view-syft">
+    <div class="sec-head"><span class="sec-num">03</span><h2 class="sec-title">Syft — SBOM Generation</h2><div class="sec-line"></div></div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Tests</div><div class="metric-val">12</div></div>
+      <div class="metric"><div class="metric-label">Passing</div><div class="metric-val green">11</div></div>
+      <div class="metric"><div class="metric-label">Failing</div><div class="metric-val red">1</div></div>
+      <div class="metric"><div class="metric-label">Coverage</div><div class="metric-val green">92%</div></div>
+    </div>
+    <div class="table-wrap"><table class="tests-table"><thead><tr><th>ID</th><th>Test Name</th><th>Category</th><th>Status</th></tr></thead><tbody id="tb-syft"></tbody></table></div>
+  </div>
+
+  <!-- ══ GRYPE ══ -->
+  <div class="content view" id="view-grype">
+    <div class="sec-head"><span class="sec-num">04</span><h2 class="sec-title">Grype — Vulnerability Scan</h2><div class="sec-line"></div></div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Tests</div><div class="metric-val">12</div></div>
+      <div class="metric"><div class="metric-label">Passing</div><div class="metric-val green">9</div></div>
+      <div class="metric"><div class="metric-label">Failing</div><div class="metric-val red">3</div></div>
+      <div class="metric"><div class="metric-label">Coverage</div><div class="metric-val amber">75%</div></div>
+    </div>
+    <div class="table-wrap"><table class="tests-table"><thead><tr><th>ID</th><th>Test Name</th><th>Category</th><th>Status</th></tr></thead><tbody id="tb-grype"></tbody></table></div>
+  </div>
+
+  <!-- ══ KYVERNO ══ -->
+  <div class="content view" id="view-kyverno">
+    <div class="sec-head"><span class="sec-num">05</span><h2 class="sec-title">Kyverno — Policy Engine</h2><div class="sec-line"></div></div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Tests</div><div class="metric-val">12</div></div>
+      <div class="metric"><div class="metric-label">Passing</div><div class="metric-val green">11</div></div>
+      <div class="metric"><div class="metric-label">Failing</div><div class="metric-val red">1</div></div>
+      <div class="metric"><div class="metric-label">Coverage</div><div class="metric-val green">88%</div></div>
+    </div>
+    <div class="table-wrap"><table class="tests-table"><thead><tr><th>ID</th><th>Test Name</th><th>Category</th><th>Status</th></tr></thead><tbody id="tb-kyverno"></tbody></table></div>
+  </div>
+
+  <!-- ══ ALL TESTS ══ -->
+  <div class="content view" id="view-tests">
+    <div class="sec-head"><span class="sec-num">06</span><h2 class="sec-title">All Test Cases</h2><div class="sec-line"></div></div>
+    <div class="test-filter">
+      <button class="filter-tab active" onclick="filterTests('ALL',this)">All (48)</button>
+      <button class="filter-tab" onclick="filterTests('PASS',this)">Passed (44)</button>
+      <button class="filter-tab" onclick="filterTests('FAIL',this)">Failed (4)</button>
+      <button class="filter-tab" onclick="filterTests('COSIGN',this)">Cosign</button>
+      <button class="filter-tab" onclick="filterTests('SYFT',this)">Syft</button>
+      <button class="filter-tab" onclick="filterTests('GRYPE',this)">Grype</button>
+      <button class="filter-tab" onclick="filterTests('KYVERNO',this)">Kyverno</button>
+    </div>
+    <div class="table-wrap-notop">
+      <table class="tests-table">
+        <thead><tr><th>ID</th><th>Test Name &amp; Detail</th><th>Tool</th><th>Category</th><th>Result</th></tr></thead>
+        <tbody id="tb-all"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══ REQUIREMENTS ══ -->
+  <div class="content view" id="view-requirements">
+    <div class="sec-head"><span class="sec-num">07</span><h2 class="sec-title">Requirements</h2><div class="sec-line"></div></div>
+    <div class="reqs-grid">
+      <div class="req-block">
+        <div class="req-block-head">Functional</div>
+        <div class="req-item"><span class="req-check">✓</span><div>Images must be signed before registry push</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>SBOM generated for every build</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Vulnerability scan runs against SBOM</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Kyverno blocks unsigned images on admission</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Pipeline fails on CRITICAL CVE severity</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Signature stored as OCI artifact in registry</div></div>
+      </div>
+      <div class="req-block">
+        <div class="req-block-head">Security</div>
+        <div class="req-item"><span class="req-check">✓</span><div>Keyless signing — no long-lived key material</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>All signing events in Rekor audit log</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>SBOM signed as attestation</div></div>
+        <div class="req-item"><span class="req-x">✗</span><div><div>Base image from private trusted registry</div><div class="req-sub">Using public docker.io — tracking in SEC-441</div></div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Non-root container user enforced by policy</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Read-only root filesystem in Kyverno policy</div></div>
+      </div>
+      <div class="req-block">
+        <div class="req-block-head">Compliance</div>
+        <div class="req-item"><span class="req-check">✓</span><div>SLSA Level 2 provenance generated</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>CycloneDX SBOM meets NTIA minimum fields</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>CVE disclosure within 24h for CRITICAL</div></div>
+        <div class="req-item"><span class="req-x">✗</span><div><div>SBOM uploaded to central artifact store</div><div class="req-sub">Pending S3 bucket config — INFRA-209</div></div></div>
+      </div>
+      <div class="req-block">
+        <div class="req-block-head">Performance</div>
+        <div class="req-item"><span class="req-check">✓</span><div>Cosign sign completes in &lt; 30 seconds</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Syft SBOM generation &lt; 2 min for 1GB image</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Grype scan completes in &lt; 3 minutes</div></div>
+        <div class="req-item"><span class="req-check">✓</span><div>Kyverno admission webhook &lt; 500ms latency</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COVERAGE ══ -->
+  <div class="content view" id="view-coverage">
+    <div class="sec-head"><span class="sec-num">08</span><h2 class="sec-title">Test Coverage</h2><div class="sec-line"></div></div>
+    <div class="cov-section">
+      <div class="cov-title">Coverage by tool</div>
+      <div class="cov-row"><div class="cov-label">Cosign</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:100%"></div></div><div class="cov-pct" style="color:var(--pass)">100%</div></div>
+      <div class="cov-row"><div class="cov-label">Syft</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:92%"></div></div><div class="cov-pct" style="color:var(--pass)">92%</div></div>
+      <div class="cov-row"><div class="cov-label">Grype</div><div class="cov-bar-bg"><div class="cov-bar-fill amber" style="width:75%"></div></div><div class="cov-pct" style="color:var(--warn)">75%</div></div>
+      <div class="cov-row"><div class="cov-label">Kyverno</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:88%"></div></div><div class="cov-pct" style="color:var(--pass)">88%</div></div>
+    </div>
+    <div class="cov-section">
+      <div class="cov-title">Coverage by category</div>
+      <div class="cov-row"><div class="cov-label">Auth / Signing</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:100%"></div></div><div class="cov-pct" style="color:var(--pass)">100%</div></div>
+      <div class="cov-row"><div class="cov-label">SBOM Content</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:95%"></div></div><div class="cov-pct" style="color:var(--pass)">95%</div></div>
+      <div class="cov-row"><div class="cov-label">CVE Detection</div><div class="cov-bar-bg"><div class="cov-bar-fill amber" style="width:80%"></div></div><div class="cov-pct" style="color:var(--warn)">80%</div></div>
+      <div class="cov-row"><div class="cov-label">Policy Enforce</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:90%"></div></div><div class="cov-pct" style="color:var(--pass)">90%</div></div>
+      <div class="cov-row"><div class="cov-label">Error Handling</div><div class="cov-bar-bg"><div class="cov-bar-fill amber" style="width:70%"></div></div><div class="cov-pct" style="color:var(--warn)">70%</div></div>
+      <div class="cov-row"><div class="cov-label">Integration</div><div class="cov-bar-bg"><div class="cov-bar-fill green" style="width:85%"></div></div><div class="cov-pct" style="color:var(--pass)">85%</div></div>
+    </div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Req. Covered</div><div class="metric-val green">21</div><div class="metric-sub">of 24 total</div></div>
+      <div class="metric"><div class="metric-label">Not Covered</div><div class="metric-val red">3</div><div class="metric-sub">open items</div></div>
+      <div class="metric"><div class="metric-label">Test Depth</div><div class="metric-val">2.0x</div><div class="metric-sub">avg tests / req</div></div>
+      <div class="metric"><div class="metric-label">Target</div><div class="metric-val amber">95%</div><div class="metric-sub">gap: 8%</div></div>
+    </div>
+  </div>
+
+  <!-- ══ LOGS ══ -->
+  <div class="content view" id="view-logs">
+    <div class="sec-head"><span class="sec-num">09</span><h2 class="sec-title">Run Logs</h2><div class="sec-line"></div></div>
+    <div class="log-block" id="log-output"><span style="color:#555;font-family:var(--mono);font-size:11px;">Press "Run Pipeline Tests" to start...</span></div>
+    <button class="run-btn" onclick="runTests()">↻ Run Pipeline Tests</button>
+  </div>
+
+</main>
+</div>
+
+<script>
+const TESTS = [
+  {id:'CS-01',tool:'COSIGN',cat:'AUTH',name:'Keyless sign with OIDC token',status:'PASS',detail:'cosign sign --identity-token $TOKEN ghcr.io/org/app@sha256:abc123\nExpected: exit 0\nActual:   exit 0  ✓\nRekor entry: tlog_id=94231, integrated_time=1719823400'},
+  {id:'CS-02',tool:'COSIGN',cat:'AUTH',name:'Rekor transparency log entry created',status:'PASS',detail:'cosign verify ghcr.io/org/app@sha256:abc123\nExpected: REKOR_LOG_ENTRY with valid tlog_id\nActual:   {"critical":true,"tlog_id":"94231"}  ✓'},
+  {id:'CS-03',tool:'COSIGN',cat:'VERIFY',name:'Verify signed image passes',status:'PASS',detail:'cosign verify --certificate-identity https://github.com/org/repo/.github/workflows/build.yml@refs/heads/main \\\n  --certificate-oidc-issuer https://token.actions.githubusercontent.com \\\n  ghcr.io/org/app@sha256:abc123\nExpected: verification success\nActual:   verification success  ✓'},
+  {id:'CS-04',tool:'COSIGN',cat:'VERIFY',name:'Verify unsigned image fails',status:'PASS',detail:'cosign verify ghcr.io/org/app:unsigned\nExpected: error: no matching signatures\nActual:   Error: no matching signatures  ✓'},
+  {id:'CS-05',tool:'COSIGN',cat:'VERIFY',name:'Verify with wrong identity rejects',status:'PASS',detail:'cosign verify --certificate-identity https://attacker.com/workflow.yml ...\nExpected: certificate identity mismatch error\nActual:   Error: none of the expected identities matched  ✓'},
+  {id:'CS-06',tool:'COSIGN',cat:'SBOM',name:'Attest SBOM to image',status:'PASS',detail:'cosign attest --predicate sbom.cdx.json --type cyclonedx ghcr.io/org/app@sha256:abc123\nExpected: attestation stored as OCI artifact\nActual:   exit 0, attestation sha256:def456  ✓'},
+  {id:'CS-07',tool:'COSIGN',cat:'SBOM',name:'Verify SBOM attestation returns payload',status:'PASS',detail:'cosign verify-attestation --type cyclonedx ghcr.io/org/app@sha256:abc123 | jq .payload\nExpected: valid CycloneDX JSON payload\nActual:   {"bomFormat":"CycloneDX","specVersion":"1.4",...}  ✓'},
+  {id:'CS-08',tool:'COSIGN',cat:'POLICY',name:'Kyverno integration uses cosign verify',status:'PASS',detail:'End-to-end: signed pod admitted by Kyverno imageVerifiers\nKyverno calls cosign verify internally under verifyImages\nExpected: pod admitted\nActual:   pod/app-pod created  ✓'},
+  {id:'CS-09',tool:'COSIGN',cat:'ERROR',name:'Sign fails on registry 401',status:'PASS',detail:'cosign sign ghcr.io/org/app@sha256:abc123  (with expired token)\nExpected: exit 1, UNAUTHORIZED\nActual:   Error: UNAUTHORIZED: authentication required  ✓'},
+  {id:'CS-10',tool:'COSIGN',cat:'ERROR',name:'Sign retries on Rekor timeout',status:'PASS',detail:'Simulated Rekor unreachable (iptables DROP rekor.sigstore.dev)\nExpected: 3 retries, then exit 1 with clear message\nActual:   Retry 1/3... Retry 2/3... Retry 3/3... Error: connection timeout  ✓'},
+  {id:'CS-11',tool:'COSIGN',cat:'PERF',name:'Sign completes within 30 seconds',status:'PASS',detail:'Benchmark: 10 consecutive sign operations\nP50: 7.2s | P95: 11.4s | P99: 14.8s\nExpected: < 30s\nActual:   max 14.8s  ✓'},
+  {id:'CS-12',tool:'COSIGN',cat:'PERF',name:'Verify completes within 5 seconds',status:'PASS',detail:'Benchmark: 10 consecutive verify operations\nP50: 1.8s | P95: 3.2s | P99: 4.1s\nExpected: < 5s\nActual:   max 4.1s  ✓'},
+
+  {id:'SF-01',tool:'SYFT',cat:'FORMAT',name:'CycloneDX JSON output generated',status:'PASS',detail:'syft ghcr.io/org/app -o cyclonedx-json > sbom.cdx.json\nExpected: valid JSON with bomFormat=CycloneDX, specVersion=1.4\nActual:   {"bomFormat":"CycloneDX","specVersion":"1.4","serialNumber":"urn:uuid:..."}  ✓'},
+  {id:'SF-02',tool:'SYFT',cat:'FORMAT',name:'SPDX JSON output generated',status:'PASS',detail:'syft ghcr.io/org/app -o spdx-json > sbom.spdx.json\nExpected: spdxVersion=SPDX-2.3, SPDXID present\nActual:   {"spdxVersion":"SPDX-2.3","SPDXID":"SPDXRef-DOCUMENT"}  ✓'},
+  {id:'SF-03',tool:'SYFT',cat:'FORMAT',name:'Syft native JSON output valid',status:'PASS',detail:'syft ghcr.io/org/app -o syft-json > sbom.syft.json\nExpected: artifacts[], schema.version present\nActual:   {"artifacts":[...],"schema":{"version":"5.0.0"}}  ✓'},
+  {id:'SF-04',tool:'SYFT',cat:'CONTENT',name:'All OS packages captured in SBOM',status:'PASS',detail:'Test image: ubuntu:22.04 with dpkg database\nExpected: all dpkg packages in artifacts[]\nActual:   246 packages found, 0 missing vs dpkg --list  ✓'},
+  {id:'SF-05',tool:'SYFT',cat:'CONTENT',name:'All language packages captured',status:'PASS',detail:'Test image: app with node_modules, pip packages, go modules\nExpected: npm, pip, gomod packages all listed\nActual:   npm=84, pip=23, gomod=31 packages — all present  ✓'},
+  {id:'SF-06',tool:'SYFT',cat:'CONTENT',name:'Package versions correctly populated',status:'PASS',detail:'Scanned 200-package test image\nExpected: no empty version fields\nActual:   0 artifacts with empty version field  ✓'},
+  {id:'SF-07',tool:'SYFT',cat:'CONTENT',name:'NTIA minimum fields all present',status:'PASS',detail:'NTIA required: Supplier, Component Name, Version, Unique Identifier, Dependency Relationship, Hash\nExpected: all 6 fields present per component\nActual:   100% of 200 components have all 6 fields  ✓'},
+  {id:'SF-08',tool:'SYFT',cat:'CONTENT',name:'Multi-stage: only final stage scanned',status:'PASS',detail:'Multi-stage Dockerfile: BUILD stage has gcc, make, cmake\nExpected: gcc/make/cmake NOT in SBOM\nActual:   0 build-only packages in output  ✓'},
+  {id:'SF-09',tool:'SYFT',cat:'CONTENT',name:'Distroless image handled correctly',status:'PASS',detail:'syft gcr.io/distroless/base-debian12\nExpected: 0 OS packages, no error, runtime libs present\nActual:   0 OS packages, glibc/libssl found via binary cataloger  ✓'},
+  {id:'SF-10',tool:'SYFT',cat:'PERF',name:'1GB image scanned under 2 minutes',status:'PASS',detail:'Benchmark image: 1.1GB (ubuntu:22.04 + node + python)\nExpected: < 120s\nActual:   68s  ✓'},
+  {id:'SF-11',tool:'SYFT',cat:'ERROR',name:'Invalid image reference returns clear error',status:'PASS',detail:'syft ghcr.io/org/notfound:latest\nExpected: exit 1, clear 404 message\nActual:   Error: failed to load image: response status code 404  ✓'},
+  {id:'SF-12',tool:'SYFT',cat:'CONTENT',name:'SBOM signed and attached as attestation',status:'FAIL',detail:'cosign attest --predicate $SYFT_SBOM_FILE --type cyclonedx ...\nExpected: exit 0, attestation pushed\nActual:   Error: open : no such file or directory\nROOT CAUSE: SYFT_SBOM_FILE env var not injected by pipeline step\nFIX: Add env: SYFT_SBOM_FILE: sbom.cdx.json to pipeline YAML\nTracking: PIPE-88'},
+
+  {id:'GR-01',tool:'GRYPE',cat:'DETECT',name:'CRITICAL CVE detected and reported',status:'PASS',detail:'Test image: contains libssl 1.1.1 (CVE-2024-1234, CRITICAL)\nExpected: CVE in report, matches.vulnerability.severity=Critical\nActual:   {"vulnerability":{"id":"CVE-2024-1234","severity":"Critical"}}  ✓'},
+  {id:'GR-02',tool:'GRYPE',cat:'DETECT',name:'HIGH CVE detected and reported',status:'PASS',detail:'Test image: contains curl 7.88 (CVE-2024-5678, HIGH)\nExpected: CVE in report, does not block pipeline\nActual:   HIGH CVE logged, exit 0  ✓'},
+  {id:'GR-03',tool:'GRYPE',cat:'DETECT',name:'Clean image scan exits 0',status:'PASS',detail:'Test image: scratch + statically-compiled Go binary\nExpected: 0 vulnerabilities, exit 0\nActual:   "matches":[], exit 0  ✓'},
+  {id:'GR-04',tool:'GRYPE',cat:'GATE',name:'Pipeline blocked on CRITICAL CVE',status:'FAIL',detail:'grype ghcr.io/org/app --fail-on critical\nExpected: exit 1 when CRITICAL CVE present\nActual:   exit 0 (--fail-on critical flag missing from Jenkinsfile step)\nROOT CAUSE: Jenkinsfile grype step missing --fail-on critical argument\nFIX: Update Jenkinsfile grype invocation to add --fail-on critical\nTracking: PIPE-91 — CRITICAL severity'},
+  {id:'GR-05',tool:'GRYPE',cat:'GATE',name:'Pipeline continues on HIGH CVE',status:'PASS',detail:'grype ... --fail-on critical (HIGH CVEs present)\nExpected: exit 0, warning annotation added\nActual:   exit 0, annotation grype/high-cves=2 added  ✓'},
+  {id:'GR-06',tool:'GRYPE',cat:'GATE',name:'MEDIUM/LOW CVEs never block pipeline',status:'PASS',detail:'grype ... --fail-on critical (MEDIUM+LOW CVEs present)\nExpected: exit 0\nActual:   exit 0  ✓'},
+  {id:'GR-07',tool:'GRYPE',cat:'INPUT',name:'Scan from SBOM file',status:'PASS',detail:'grype sbom:./sbom.cdx.json -o json\nExpected: same CVE list as direct image scan\nActual:   identical matches[] to image scan  ✓'},
+  {id:'GR-08',tool:'GRYPE',cat:'INPUT',name:'Scan from OCI image directly',status:'PASS',detail:'grype ghcr.io/org/app@sha256:abc123 -o json\nExpected: valid JSON report\nActual:   {"matches":[...],"source":{"type":"image"}}  ✓'},
+  {id:'GR-09',tool:'GRYPE',cat:'OUTPUT',name:'JSON report output valid',status:'PASS',detail:'grype ... -o json | jq .matches\nExpected: array of match objects\nActual:   24 match objects, schema valid  ✓'},
+  {id:'GR-10',tool:'GRYPE',cat:'OUTPUT',name:'SARIF output valid for GitHub upload',status:'FAIL',detail:'grype ... -o sarif > results.sarif\nExpected: valid SARIF 2.1.0 with non-empty run.tool.driver.rules[]\nActual:   run.tool.driver.rules=[] — GitHub Advanced Security rejects empty rules array\nROOT CAUSE: grype SARIF output omits rules when no CVEs have fix versions\nFIX: Post-process SARIF or upgrade grype to v0.74+ which fixes this\nTracking: PIPE-94'},
+  {id:'GR-11',tool:'GRYPE',cat:'DB',name:'Vulnerability DB auto-updated before scan',status:'PASS',detail:'grype db update run as pre-step\nExpected: DB timestamp within 24h of scan time\nActual:   DB age: 4h 12m before scan  ✓'},
+  {id:'GR-12',tool:'GRYPE',cat:'PERF',name:'Scan completes under 3 minutes',status:'PASS',detail:'Benchmark: 500MB image\nExpected: < 180s\nActual:   94s  ✓'},
+
+  {id:'KV-01',tool:'KYVERNO',cat:'ADMIT',name:'Signed image admitted to cluster',status:'PASS',detail:'kubectl apply -f signed-pod.yaml\nExpected: pod created\nActual:   pod/app-pod created  ✓'},
+  {id:'KV-02',tool:'KYVERNO',cat:'ADMIT',name:'Unsigned image rejected at admission',status:'PASS',detail:'kubectl apply -f unsigned-pod.yaml\nExpected: Error from policy require-image-signature\nActual:   Error: failed verifyImages rule: no signature found for image  ✓'},
+  {id:'KV-03',tool:'KYVERNO',cat:'ADMIT',name:'Wrong signer identity rejected',status:'PASS',detail:'Image signed by attacker OIDC issuer\nExpected: rejected with identity mismatch\nActual:   Error: none of the expected identities matched  ✓'},
+  {id:'KV-04',tool:'KYVERNO',cat:'POLICY',name:'ClusterPolicy verifyImages rule is Ready',status:'PASS',detail:'kubectl get clusterpolicy require-image-signature -o jsonpath={.status.ready}\nExpected: true\nActual:   true  ✓'},
+  {id:'KV-05',tool:'KYVERNO',cat:'POLICY',name:'SBOM attestation verification rule active',status:'PASS',detail:'verifyImages[].attestations[].type: cyclonedx\nPod with SBOM attestation: admitted\nPod without SBOM attestation: rejected — Error: attestation not found  ✓'},
+  {id:'KV-06',tool:'KYVERNO',cat:'POLICY',name:'Non-root user enforced by policy',status:'PASS',detail:'Pod spec without runAsNonRoot: true\nExpected: rejected by require-non-root policy\nActual:   Error: Pod must run as non-root user  ✓'},
+  {id:'KV-07',tool:'KYVERNO',cat:'POLICY',name:'Read-only root filesystem enforced',status:'PASS',detail:'Pod spec without readOnlyRootFilesystem: true\nExpected: rejected\nActual:   Error: readOnlyRootFilesystem must be true  ✓'},
+  {id:'KV-08',tool:'KYVERNO',cat:'POLICY',name:'Privileged containers blocked',status:'PASS',detail:'Pod with securityContext.privileged: true\nExpected: rejected by disallow-privileged policy\nActual:   Error: Privileged containers are not allowed  ✓'},
+  {id:'KV-09',tool:'KYVERNO',cat:'MUTATE',name:'Default labels injected on admission',status:'PASS',detail:'kubectl apply -f pod.yaml (no managed-by label)\nExpected: app.kubernetes.io/managed-by: securepipe added\nActual:   label present on admitted pod  ✓'},
+  {id:'KV-10',tool:'KYVERNO',cat:'MUTATE',name:'Image tag mutated to digest',status:'PASS',detail:'Pod spec: image: myapp:latest\nExpected: mutated to myapp@sha256:... by pin-image-digest policy\nActual:   image: myapp@sha256:abc123...  ✓'},
+  {id:'KV-11',tool:'KYVERNO',cat:'PERF',name:'Admission webhook responds under 500ms',status:'PASS',detail:'Load test: 100 concurrent pod admissions\nP50: 62ms | P95: 180ms | P99: 310ms\nExpected: P99 < 500ms\nActual:   P99 = 310ms  ✓'},
+  {id:'KV-12',tool:'KYVERNO',cat:'ERROR',name:'PolicyException requires audit annotation',status:'FAIL',detail:'kubectl apply -f policy-exception.yaml (no audit-reason annotation)\nExpected: rejected — PolicyException must have audit-reason annotation\nActual:   PolicyException accepted without annotation\nROOT CAUSE: validate-policy-exceptions ClusterPolicy not applied to cluster\nFIX: Apply validate-policy-exceptions.yaml from policy repo\nTracking: SEC-449'},
+];
+
+function statusEl(s){
+  if(s==='PASS') return '<span class="t-pass">&#10003; PASS</span>';
+  return '<span class="t-fail">&#10007; FAIL</span>';
+}
+
+function renderTool(tbodyId, tool){
+  const tb = document.getElementById(tbodyId);
+  if(!tb) return;
+  tb.innerHTML = TESTS.filter(t=>t.tool===tool).map(t=>`
+    <tr class="data-row" onclick="toggleRow('d-${t.id}')">
+      <td><span class="t-id">${t.id}</span></td>
+      <td>
+        <div class="t-name">${t.name}</div>
+        <div id="d-${t.id}" style="display:none">
+          <div class="detail-panel"><div class="detail-pre">${t.detail}</div></div>
+        </div>
+      </td>
+      <td><span class="t-cat">${t.cat}</span></td>
+      <td>${statusEl(t.status)}</td>
+    </tr>`).join('');
+}
+
+function renderAll(filter){
+  const tb = document.getElementById('tb-all');
+  if(!tb) return;
+  let rows = TESTS;
+  if(filter==='PASS') rows = TESTS.filter(t=>t.status==='PASS');
+  else if(filter==='FAIL') rows = TESTS.filter(t=>t.status==='FAIL');
+  else if(['COSIGN','SYFT','GRYPE','KYVERNO'].includes(filter)) rows = TESTS.filter(t=>t.tool===filter);
+  tb.innerHTML = rows.map(t=>`
+    <tr class="data-row" onclick="toggleRow('ad-${t.id}')">
+      <td><span class="t-id">${t.id}</span></td>
+      <td>
+        <div class="t-name">${t.name}</div>
+        <div class="t-detail">${t.detail.substring(0,90)}${t.detail.length>90?'...':''}</div>
+        <div id="ad-${t.id}" style="display:none">
+          <div class="detail-panel"><div class="detail-pre">${t.detail}</div></div>
+        </div>
+      </td>
+      <td><span class="t-tool">${t.tool}</span></td>
+      <td><span class="t-cat">${t.cat}</span></td>
+      <td>${statusEl(t.status)}</td>
+    </tr>`).join('');
+}
+
+function filterTests(f, el){
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderAll(f);
+}
+
+function toggleRow(id){
+  const el = document.getElementById(id);
+  if(el) el.style.display = el.style.display==='none'?'block':'none';
+}
+
+const VIEWS=['dashboard','pipeline','cosign','syft','grype','kyverno','tests','requirements','coverage','logs'];
+const TITLES={dashboard:'Dashboard',pipeline:'Pipeline Stages',cosign:'Cosign — Image Signing',syft:'Syft — SBOM',grype:'Grype — Vuln Scan',kyverno:'Kyverno — Policy',tests:'All Test Cases',requirements:'Requirements',coverage:'Coverage',logs:'Run Logs'};
+
+function showView(name, el){
+  VIEWS.forEach(v=>{
+    const d=document.getElementById('view-'+v);
+    if(d) d.classList.toggle('active',v===name);
+  });
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  if(el) el.classList.add('active');
+  else {
+    document.querySelectorAll('.nav-item').forEach(n=>{
+      if(n.textContent.trim().toLowerCase().startsWith(name)) n.classList.add('active');
+    });
+  }
+  document.getElementById('page-title').textContent = TITLES[name]||name;
+}
+
+const LOGS=[
+  ['00:00','INFO','Pipeline triggered — push to main by dev@org.io'],
+  ['00:01','INFO','Stage 01: docker build -t ghcr.io/org/app:latest .'],
+  ['00:08','INFO','Layer cache hit — 6/8 layers reused'],
+  ['00:12','PASS','Build complete: sha256:a3f2c8d1e4b9f7...'],
+  ['00:13','INFO','Stage 02: cosign sign ghcr.io/org/app@sha256:a3f2c8d1...'],
+  ['00:14','INFO','Requesting OIDC token from GitHub Actions'],
+  ['00:15','INFO','Uploading signature to Rekor transparency log'],
+  ['00:21','PASS','Image signed — Rekor tlog index: 94231'],
+  ['00:22','INFO','Stage 03: syft ghcr.io/org/app -o cyclonedx-json'],
+  ['01:08','WARN','SYFT_SBOM_FILE env not set — cosign attest skipped [SF-12 FAIL]'],
+  ['01:09','INFO','Stage 04: grype sbom:./sbom.cdx.json --fail-on critical'],
+  ['01:11','WARN','CRITICAL: CVE-2024-1234 in libssl 1.1.1 (CVSS 9.8)'],
+  ['01:11','WARN','HIGH:     CVE-2024-5678 in curl 7.88 (CVSS 7.5)'],
+  ['01:12','ERR' ,'--fail-on critical not in step — pipeline NOT blocked [GR-04 FAIL]'],
+  ['01:13','WARN','grype -o sarif: run.tool.driver.rules=[] [GR-10 FAIL]'],
+  ['01:14','INFO','Stage 05: kyverno policy check — require-image-signature'],
+  ['01:15','PASS','Pod admitted — cosign signature verified'],
+  ['01:16','PASS','SBOM attestation verified — CycloneDX present'],
+  ['01:17','WARN','PolicyException without audit-reason accepted [KV-12 FAIL]'],
+  ['01:18','PASS','Pipeline complete — 44/48 tests passed'],
+  ['01:18','ERR' ,'4 failures require immediate action: SF-12, GR-04, GR-10, KV-12'],
+];
+
+let logRunning=false;
+function runTests(){
+  if(logRunning) return;
+  logRunning=true;
+  const lb=document.getElementById('log-output');
+  lb.innerHTML='';
+  showView('logs',null);
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i>=LOGS.length){clearInterval(iv);logRunning=false;return;}
+    const [t,l,m]=LOGS[i++];
+    const cls=l==='PASS'?'log-pass':l==='WARN'?'log-warn':l==='ERR'?'log-err':'log-info';
+    lb.innerHTML+=`<div class="log-line"><span class="log-time">${t}</span><span class="${cls}"> [${l}] </span><span class="log-msg">${m}</span></div>`;
+    lb.scrollTop=lb.scrollHeight;
+  },200);
+}
+
+// Init
+renderTool('tb-cosign','COSIGN');
+renderTool('tb-syft','SYFT');
+renderTool('tb-grype','GRYPE');
+renderTool('tb-kyverno','KYVERNO');
+renderAll('ALL');
+</script>
+</body>
+</html>
