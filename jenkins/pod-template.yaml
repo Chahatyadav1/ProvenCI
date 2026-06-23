@@ -10,6 +10,8 @@ spec:
     - name: git
       image: alpine/git:2.45.2
       tty: true
+      command: ["/bin/sh", "-c"]
+      args: ["apk add --no-cache github-cli yq && sleep 999999"]
       resources:
         requests:
           cpu: "50m"
