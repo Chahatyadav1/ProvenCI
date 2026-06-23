@@ -1,4 +1,3 @@
-
 pipeline {
     agent {
         kubernetes {
@@ -22,14 +21,16 @@ pipeline {
 
         COSIGN_EXPERIMENTAL = '1'
     }
-    stages{
+
+    stages {
+
         stage('Build Image') {
             steps {
                 container('docker') {
-                    sh 'docker build -t ${IMAGE_REF} .'
                     sh '''
-                    docker save ${IMAGE_REF} -o image.tar
-                '''
+                        docker build -t ${IMAGE_REF} .
+                        docker save ${IMAGE_REF} -o image.tar
+                    '''
                 }
             }
         }
@@ -38,190 +39,189 @@ pipeline {
             steps {
                 container('trivy') {
                     sh '''
-                    trivy image \
-                      --input image.tar \
-                      --severity HIGH,CRITICAL \
-                      --exit-code 1 \
-                      --format table
-                '''
+                        trivy image \
+                          --input image.tar \
+                          --severity HIGH,CRITICAL \
+                          --exit-code 1 \
+                          --format table
+                    '''
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                container(docker) {
+                container('docker') {
                     withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        docker push ${IMAGE_REF}
-                    '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${IMAGE_REF}
+                        '''
                     }
                 }
             }
         }
 
         stage('Get Image Digest') {
-    steps {
-        container('crane') {
-            script {
-                env.IMAGE_DIGEST = sh(
-                    script: "crane digest ${IMAGE_REF}",
-                    returnStdout: true
-                ).trim()
-
-                echo "Digest: ${IMAGE_DIGEST}"
-                echo "Image: ${IMAGE_REF}@${IMAGE_DIGEST}"
+            steps {
+                container('crane') {
+                    script {
+                        env.IMAGE_DIGEST = sh(
+                            script: "crane digest ${IMAGE_REF}",
+                            returnStdout: true
+                        ).trim()
+                        echo "Digest:  ${env.IMAGE_DIGEST}"
+                        echo "Image:   ${IMAGE_REF}@${env.IMAGE_DIGEST}"
+                    }
+                }
             }
         }
-    }
-}
-stage('Sign Image — Cosign') {
-    steps {
 
-        container('cosign') {
-            withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-            sh '''
-                cosign sign \
-                  --yes \
-                  --key awskms://$KMS_ARN \
-                  ${IMAGE_REF}@${IMAGE_DIGEST}
-            '''
+        stage('Generate SBOM — Syft') {
+            steps {
+                container('syft') {
+                    sh '''
+                        syft ${IMAGE_REF} \
+                          --source-name ${IMAGE_REF} \
+                          -o spdx-json=sbom.spdx.json
+
+                        # Validate spdxVersion is present and correct before attesting
+                        SPDX_VER=$(grep -o '"spdxVersion":"SPDX-2.3"' sbom.spdx.json || true)
+                        if [ -z "$SPDX_VER" ]; then
+                            echo "ERROR: sbom.spdx.json is not SPDX-2.3 — aborting"
+                            exit 1
+                        fi
+                        echo "SBOM validated: SPDX-2.3"
+                    '''
+                }
+            }
         }
-    }
-}
-}
+
+        stage('SBOM Vulnerability Scan — Grype') {
+            steps {
+                container('grype') {
+                    sh '''
+                        grype sbom:sbom.spdx.json \
+                          --fail-on critical \
+                          --output table
+                    '''
+                }
+            }
+        }
+
+        stage('Sign Image — Cosign') {
+            steps {
+                container('cosign') {
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
+                            cosign sign \
+                              --yes \
+                              --key awskms://${KMS_ARN} \
+                              ${IMAGE_REF}@${IMAGE_DIGEST}
+                        '''
+                    }
+                }
+            }
+        }
+
         stage('Attest SBOM — Cosign') {
             steps {
                 container('cosign') {
                     withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                cosign attest \
-                  --yes \
-                  --predicate sbom.spdx.json \
-                  --type spdx \
-                  ${IMAGE_REF}@${IMAGE_DIGEST}
-            '''
+                        sh '''
+                            echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
+                            cosign attest \
+                              --yes \
+                              --predicate sbom.spdx.json \
+                              --type https://spdx.dev/Document \
+                              --key awskms://${KMS_ARN} \
+                              ${IMAGE_REF}@${IMAGE_DIGEST}
+                        '''
+                    }
                 }
             }
         }
-        }
-        post {
-            always {
-                archiveArtifacts artifacts: 'sbom.spdx.json'
-            }
-        }
+
+stage('Generate + Attach SLSA Provenance') {
+    steps {
+        container('cosign') {
+            withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                sh '''
+                    echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
+
+                    cat <<EOF > provenance.json
+{
+  "buildType": "https://github.com/Chahatyadav1/ProvenCI",
+  "builder": { "id": "https://jenkins.company.com" },
+  "invocation": {
+    "configSource": {
+      "uri": "${GIT_URL}",
+      "digest": { "sha1": "${GIT_COMMIT}" },
+      "entryPoint": "Jenkinsfile"
+    }
+  },
+  "metadata": {
+    "buildStartedOn":  "${BUILD_TIMESTAMP}",
+    "buildFinishedOn": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  }
 }
-
-    stage('SBOM Vulnerability Scan — Grype') {
-        steps {
-            container('grype') {
-                sh '''
-                    grype sbom:sbom.spdx.json \
-                      --fail-on critical \
-                      --output table
-                '''
-            }
-        }
-    }
-
-    stage('Sign Image — Cosign ') {
-        steps {
-            container('cosign') {
-                withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                    sh '''
-                    sudo apt install crane -y || true
-                    $DIGEST= crane digest ${IMAGE_REF}
-                    cosign sign --key awskms:///$KMS_ARN   ${IMAGE_REF}@${DIGEST}
-                '''
-                }
-            }
-        }
-    }
-
-    stage('Attest SBOM — Cosign') {
-        steps {
-            container('cosign') {
-                sh '''
-                    cosign attest \
-                      --yes \
-                      --predicate sbom.spdx.json \
-                      --type spdx \
-                      ${IMAGE_REF}
-                '''
-            }
-        }
-    }
-
-    stage('Generate + Attach SLSA Provenance') {
-        steps {
-            container('cosign') {
-                sh '''
+EOF
                     cosign attest \
                       --yes \
                       --predicate provenance.json \
                       --type slsaprovenance \
-                      ${IMAGE_REF}
+                      --key awskms://${KMS_ARN} \
+                      ${IMAGE_REF}@${IMAGE_DIGEST}
                 '''
             }
         }
-    }
-
-    stage('Update Image Tag') {
-        steps {
-                withCredentials([string(credentialsId: 'GitHub-token-text', variable: 'GITHUB_TOKEN')]) {
-                    sh '''
-                        gh pr create \
-                            --repo Chahatyadav1/ProvenCI \
-                            --title "Updated Docker Image Tag - Build $BUILD_ID" \
-                            --body "This PR updates the docker image tag for build $BUILD_ID" \
-                            --base main
-                    '''
-                }
-        }
-    }
-    stage('Update GitOps Repo (ArgoCD Trigger)') {
-        steps {
-            container('git') {
-                sh '''
-                    git clone https://github.com/your-org/gitops-config.git
-
-                    cd gitops-config
-
-                    yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
-                      apps/slsa-demo-app/deployment.yaml
-
-                    git config user.email "jenkins@company.com"
-                    git config user.name "jenkins"
-
-                    git commit -am "deploy: ${IMAGE_TAG}" || true
-                    git push origin main
-                '''
-            }
-        }
-    }
-
-post {
-    success {
-        sh '''
-            curl -X POST \
-              -H "Content-type: application/json" \
-              --data "{\"text\":\" Pipeline succeeded - ${IMAGE_REF} signed, attested and deployed\"}" \
-              $SLACK_WEBHOOK
-        '''
-    }
-
-    failure {
-        sh '''
-            curl -X POST \
-              -H "Content-type: application/json" \
-              --data "{\"text\":\" Pipeline failed - ${IMAGE_REF}. Check Jenkins logs.\"}" \
-              $SLACK_WEBHOOK
-        '''
-    }
-
-    always {
-        cleanWs()
     }
 }
+        stage('Update GitOps Repo (ArgoCD Trigger)') {
+            steps {
+                container('git') {
+                    withCredentials([string(credentialsId: 'GitHub-token-text', variable: 'GITHUB_TOKEN')]) {
+                        sh '''
+                            git clone https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git gitops-config
+
+                            cd gitops-config
+
+                            yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
+                              apps/slsa-demo-app/deployment.yaml
+
+                            git config user.email "jenkins@company.com"
+                            git config user.name  "jenkins"
+
+                            git commit -am "deploy: ${IMAGE_TAG}" || true
+                            git push origin main
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            sh '''
+                curl -X POST \
+                  -H "Content-type: application/json" \
+                  --data "{\"text\":\"✅ Pipeline succeeded — ${IMAGE_REF} signed, attested and deployed\"}" \
+                  $SLACK_WEBHOOK
+            '''
+        }
+        failure {
+            sh '''
+                curl -X POST \
+                  -H "Content-type: application/json" \
+                  --data "{\"text\":\"❌ Pipeline failed — ${IMAGE_REF}. Check Jenkins logs.\"}" \
+                  $SLACK_WEBHOOK
+            '''
+        }
+        always {
+            archiveArtifacts artifacts: 'sbom.spdx.json, provenance.json'
+            cleanWs()
+        }
+    }
 }
