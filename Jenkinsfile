@@ -3,7 +3,6 @@ pipeline {
         kubernetes {
             yamlFile 'jenkins/pod-template.yaml'
             cloud 'eks-cloud'
-        
         }
     }
     options {
@@ -216,8 +215,8 @@ EOF
         }
             stage('K8S - Raise PR') {
             when { branch 'dev' }
-            container(git) {
                 steps {
+                    container(git) {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
                         gh pr create \
@@ -228,8 +227,8 @@ EOF
                             --base main
                     '''
                     }
+                    }
                 }
-            }
             }
             stage('Manual Approval') {
             when { branch 'main' }
