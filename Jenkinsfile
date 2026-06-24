@@ -11,7 +11,7 @@ pipeline {
     }
 
     environment {
-        REGISTRY            = 'docker.io/chahatyadav1/sscsp'
+        REGISTRY            = 'docker.io/chahatyadav1/dashboard'
         IMAGE_TAG           = "${env.GIT_COMMIT.take(8)}"
         IMAGE_REF           = "${REGISTRY}:${IMAGE_TAG}"
 
@@ -81,7 +81,7 @@ pipeline {
             steps {
                 container('syft') {
                     sh '''
-                        syft ${IMAGE_REF} \
+                        syft docker-archive:image.tar  \
                           --source-name ${IMAGE_REF} \
                           -o spdx-json=sbom.spdx.json
 
@@ -178,28 +178,22 @@ EOF
         }
     }
 }
-        stage('Update GitOps Repo (ArgoCD Trigger)') {
-            steps {
-                container('git') {
-                    withCredentials([string(credentialsId: 'GitHub-token-text', variable: 'GITHUB_TOKEN')]) {
-                        sh '''
-                            git clone https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git gitops-config
+stage('Update GitOps (ArgoCD Trigger)') {
+    steps {
+        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+            sh '''
+                yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
+                  k8s/deployment.yaml
 
-                            cd gitops-config
-
-                            yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
-                              apps/slsa-demo-app/deployment.yaml
-
-                            git config user.email "jenkins@company.com"
-                            git config user.name  "jenkins"
-
-                            git commit -am "deploy: ${IMAGE_TAG}" || true
-                            git push origin main
-                        '''
-                    }
-                }
-            }
+                git config user.email "jenkins@company.com"
+                git config user.name  "jenkins"
+                git remote set-url origin https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git
+                git commit -am "[deploy] update image: ${IMAGE_TAG}" || true
+                git push origin main
+            '''
         }
+    }
+}
     }
 
     post {
@@ -207,7 +201,7 @@ EOF
             sh '''
                 curl -X POST \
                   -H "Content-type: application/json" \
-                  --data "{\"text\":\"✅ Pipeline succeeded — ${IMAGE_REF} signed, attested and deployed\"}" \
+                  --data "{\"text\":\" Pipeline succeeded — ${IMAGE_REF} signed, attested and deployed\"}" \
                   $SLACK_WEBHOOK
             '''
         }
@@ -215,7 +209,7 @@ EOF
             sh '''
                 curl -X POST \
                   -H "Content-type: application/json" \
-                  --data "{\"text\":\"❌ Pipeline failed — ${IMAGE_REF}. Check Jenkins logs.\"}" \
+                  --data "{\"text\":\" Pipeline failed — ${IMAGE_REF}. Check Jenkins logs.\"}" \
                   $SLACK_WEBHOOK
             '''
         }

@@ -1,33 +1,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: slsa-demo-app
-  namespace: slsa-demo-app
+  name: dashboard
+  namespace: dashboard
   labels:
-    app: slsa-demo-app
+    app: dashboard
 spec:
   replicas: 2
   selector:
     matchLabels:
-      app: slsa-demo-app
+      app: dashboard
   template:
     metadata:
       labels:
-        app: slsa-demo-app
+        app: dashboard
     spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
       containers:
-        - name: slsa-demo-app
-          image: "docker.io/chahatyadav1/provenci:latest"
+        - name: dashboard
+          image: "docker.io/chahatyadav1/dashboard:placeholder"
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
-          securityContext:
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop: ["ALL"]
+            - containerPort: 80
           resources:
             requests:
               cpu: 100m
@@ -37,11 +33,11 @@ spec:
               memory: 256Mi
           readinessProbe:
             httpGet:
-              path: /readyz
-              port: 8080
+              path: /
+              port: 80
             initialDelaySeconds: 3
           livenessProbe:
             httpGet:
-              path: /healthz
-              port: 8080
+              path: /
+              port: 80
             initialDelaySeconds: 5

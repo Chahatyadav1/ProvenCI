@@ -7,7 +7,7 @@ spec:
   exceptions:
     - policyName: require-signed-images
       ruleNames:
-        - verify-jenkins-signature
+        - check-image
     - policyName: require-sbom-attestation
       ruleNames:
         - verify-sbom-attestation

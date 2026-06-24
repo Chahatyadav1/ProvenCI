@@ -4,11 +4,16 @@ metadata:
   labels:
     jenkins-agent: slsa-pipeline
 spec:
+  volumes:
+  - name: workspace-volume
+    emptyDir: {}
   restartPolicy: Never
   containers:
-
     - name: git
       image: alpine/git:2.45.2
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
       tty: true
       command: ["/bin/sh", "-c"]
       args: ["apk add --no-cache github-cli yq && sleep 999999"]
@@ -22,7 +27,10 @@ spec:
 
     - name: crane
       image: gcr.io/go-containerregistry/crane:debug
-      command: [sleep]
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+      command: ["sleep"]
       args: ["999999"]
       tty: true
       resources:
@@ -33,19 +41,14 @@ spec:
           cpu: "500m"
           memory: "256Mi"
 
-    - name: owasp-dependency-check
-      image: owasp/dependency-check:9.1.0
-      tty: true
-      resources:
-        requests:
-          cpu: "200m"
-          memory: "512Mi"
-        limits:
-          cpu: "1000m"
-          memory: "1536Mi"
-
     - name: docker
       image: docker:28-dind
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+      env:
+      - name: DOCKER_TLS_CERTDIR
+        value: ""
       tty: true
       securityContext:
         privileged: true
@@ -58,7 +61,12 @@ spec:
           memory: "2Gi"
 
     - name: trivy
-      image: aquasec/trivy:0.52.2
+      image: aquasec/trivy:0.71.2@sha256:f5d0e600ecda7449e2a9b272805aef698631d3bb3f3a739a750de2c6819acdc9
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+      command: ["sleep"]
+      args: ["999999"]
       tty: true
       resources:
         requests:
@@ -69,18 +77,28 @@ spec:
           memory: "512Mi"
 
     - name: syft
-      image: anchore/syft:v1.7.0
+      image: anchore/syft:v1.45.1@sha256:c6d5719f48f5a5986acf2847eb1ed7c53176e712d5721fcd156184cfb262f6eb
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+      command: ["sleep"]
+      args: ["999999"]
       tty: true
       resources:
         requests:
-          cpu: "100m"
-          memory: "128Mi"
+          cpu: "50m"
+          memory: "64Mi"
         limits:
-          cpu: "500m"
-          memory: "512Mi"
+          cpu: "250m"
+          memory: "256Mi"
 
     - name: grype
-      image: anchore/grype:v0.79.1
+      image: anchore/grype:v0.114.0@sha256:7a9fc7f89ccef78ae5a7691a115d3f0d41b1f319d589dd8cc1dcb9ab3f01dd28
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+      command: ["sleep"]
+      args: ["999999"]
       tty: true
       resources:
         requests:
@@ -92,6 +110,11 @@ spec:
 
     - name: cosign
       image: gcr.io/projectsigstore/cosign:v2.2.4
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
+      command: ["sleep"]
+      args: ["999999"]
       tty: true
       resources:
         requests:
