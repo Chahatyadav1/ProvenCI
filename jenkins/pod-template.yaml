@@ -5,6 +5,8 @@ metadata:
     jenkins-agent: slsa-pipeline
 spec:
   restartPolicy: Never
+  tolerations:
+    - operator: Exists
   volumes:
     - name: workspace-volume
       emptyDir: {}
