@@ -1,5 +1,5 @@
-FROM nginx:alpine
+FROM nginxinc/nginx-unprivileged:alpine3.23-perl
 
-COPY ./app/dashboard.html  /usr/share/nginx/html
+COPY ./app/dashboard.html  /usr/share/nginx/html/index.html
 
-EXPOSE 80
+EXPOSE 8080
