@@ -18,12 +18,19 @@ spec:
       automountServiceAccountToken: false
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: dashboard
           image: "docker.io/chahatyadav1/dashboard:placeholder"
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - ALL
           ports:
-            - containerPort: 80
+            - containerPort: 8080
           resources:
             requests:
               cpu: 100m
@@ -36,8 +43,10 @@ spec:
               path: /
               port: 80
             initialDelaySeconds: 3
+            periodSeconds: 5
           livenessProbe:
             httpGet:
               path: /
               port: 80
             initialDelaySeconds: 5
+            periodSeconds: 10

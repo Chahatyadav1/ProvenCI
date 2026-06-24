@@ -38,8 +38,8 @@ spec:
           cpu: "50m"
           memory: "64Mi"
         limits:
-          cpu: "500m"
-          memory: "256Mi"
+          cpu: "200m"
+          memory: "128Mi"
 
     - name: docker
       image: docker:28-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac
@@ -54,11 +54,11 @@ spec:
         privileged: true
       resources:
         requests:
-          cpu: "200m"
-          memory: "256Mi"
+          cpu: "300m"
+          memory: "512Mi"
         limits:
-          cpu: "2000m"
-          memory: "2Gi"
+          cpu: "1500m"
+          memory: "1.5Gi"
 
     - name: trivy
       image: aquasec/trivy:0.71.2@sha256:f5d0e600ecda7449e2a9b272805aef698631d3bb3f3a739a750de2c6819acdc9
@@ -86,8 +86,8 @@ spec:
       tty: true
       resources:
         requests:
-          cpu: "50m"
-          memory: "64Mi"
+          cpu: "100m"
+          memory: "128Mi"
         limits:
           cpu: "250m"
           memory: "256Mi"
@@ -102,8 +102,8 @@ spec:
       tty: true
       resources:
         requests:
-          cpu: "100m"
-          memory: "128Mi"
+          cpu: "150m"
+          memory: "256Mi"
         limits:
           cpu: "500m"
           memory: "512Mi"
@@ -122,4 +122,4 @@ spec:
           memory: "64Mi"
         limits:
           cpu: "200m"
-          memory: "128Mi"
+          memory: "256Mi"

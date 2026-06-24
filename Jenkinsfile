@@ -2,11 +2,13 @@ pipeline {
     agent {
         kubernetes {
             yamlFile 'jenkins/pod-template.yaml'
+            cloud 'eks-cloud'
+        
         }
     }
     options {
         timestamps()
-        disableConcurrentBuilds()
+        disableConcurrentBuilds(abortPrevious: true)
         timeout(time: 30, unit: 'MINUTES')
     }
 
@@ -17,14 +19,12 @@ pipeline {
 
         KMS_ARN             = credentials('kms-arn')
         SONAR_TOKEN         = credentials('sonarqube-token')
-        SLACK_WEBHOOK       = credentials('slack-webhook-url')
-
-        COSIGN_EXPERIMENTAL = '1'
+    // SLACK_WEBHOOK       = credentials('slack-webhook-url')
     }
 
     stages {
-
         stage('Build Image') {
+            when { branch 'dev' }
             steps {
                 container('docker') {
                     sh '''
@@ -37,6 +37,7 @@ pipeline {
 
         stage('Filesystem / Image Scan — Trivy') {
             steps {
+                when { branch 'dev' }
                 container('trivy') {
                     sh '''
                         trivy image \
@@ -50,6 +51,7 @@ pipeline {
         }
 
         stage('Push Docker Image') {
+            when { branch 'dev' }
             steps {
                 container('docker') {
                     withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -63,6 +65,7 @@ pipeline {
         }
 
         stage('Get Image Digest') {
+            when { branch 'dev' }
             steps {
                 container('crane') {
                     script {
@@ -78,6 +81,7 @@ pipeline {
         }
 
         stage('Generate SBOM — Syft') {
+            when { branch 'dev' }
             steps {
                 container('syft') {
                     sh '''
@@ -98,6 +102,7 @@ pipeline {
         }
 
         stage('SBOM Vulnerability Scan — Grype') {
+            when { branch 'dev' }
             steps {
                 container('grype') {
                     sh '''
@@ -110,6 +115,7 @@ pipeline {
         }
 
         stage('Sign Image — Cosign') {
+            when { branch 'dev' }
             steps {
                 container('cosign') {
                     withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -126,6 +132,7 @@ pipeline {
         }
 
         stage('Attest SBOM — Cosign') {
+            when { branch 'dev' }
             steps {
                 container('cosign') {
                     withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
@@ -143,11 +150,12 @@ pipeline {
             }
         }
 
-stage('Generate + Attach SLSA Provenance') {
-    steps {
-        container('cosign') {
-            withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                sh '''
+        stage('Generate + Attach SLSA Provenance') {
+            when { branch 'dev' }
+            steps {
+                container('cosign') {
+                    withCredentials([usernamePassword(credentialsId: 'docker-creds', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
                     echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
 
                     cat <<EOF > provenance.json
@@ -162,7 +170,7 @@ stage('Generate + Attach SLSA Provenance') {
     }
   },
   "metadata": {
-    "buildStartedOn":  "${BUILD_TIMESTAMP}",
+    "buildStartedOn":  "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
     "buildFinishedOn": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   }
 }
@@ -174,47 +182,83 @@ EOF
                       --key awskms://${KMS_ARN} \
                       ${IMAGE_REF}@${IMAGE_DIGEST}
                 '''
+                    }
+                }
             }
         }
-    }
-}
-stage('Update GitOps (ArgoCD Trigger)') {
-    steps {
-        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-            sh '''
-                yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
-                  k8s/deployment.yaml
+        stage('Update GitOps (ArgoCD Trigger)') {
+            when { branch 'dev' }
+            steps {
+                container('git') {
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                        sh '''
+        git config user.email "jenkins@company.com"
+        git config user.name "jenkins"
 
-                git config user.email "jenkins@company.com"
-                git config user.name  "jenkins"
-                git remote set-url origin https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git
-                git commit -am "[deploy] update image: ${IMAGE_TAG}" || true
-                git push origin main
-            '''
+        git remote set-url origin https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git
+
+        git checkout dev
+        git pull --rebase origin dev
+
+        yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
+          k8s/deployment.yaml
+
+        git add k8s/deployment.yaml
+
+        git diff --cached --quiet || \
+        git commit -m "update docker image"
+
+        git push origin dev
+    '''
+                    }
+                }
+            }
         }
+            stage('K8S - Raise PR') {
+            when { branch 'dev' }
+            container(git) {
+                steps {
+                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                        sh '''
+                        gh pr create \
+                            --repo Chahatyadav1/ProvenCI.git \
+                            --title "Updated Docker Image Tag - Build $BUILD_ID" \
+                            --body "This PR updates the docker image tag for build $BUILD_ID" \
+                            --head dev \
+                            --base main
+                    '''
+                    }
+                }
+            }
+            }
+            stage('Manual Approval') {
+            when { branch 'main' }
+            steps {
+                input(cancel: 'no', message: 'Is the PR merged, ArgoCD deployed and synced?', ok: 'yes! lets go shipped to production')
+            }
+            }
     }
-}
-    }
-
     post {
         success {
-            sh '''
-                curl -X POST \
-                  -H "Content-type: application/json" \
-                  --data "{\"text\":\" Pipeline succeeded — ${IMAGE_REF} signed, attested and deployed\"}" \
-                  $SLACK_WEBHOOK
-            '''
+            slackSend(
+            channel: '#argocd-notification',
+            color: 'good',
+            tokenCredentialId: 'slack-bot-token',
+            message: "Pipeline succeeded — ${IMAGE_REF} signed, attested and deployed"
+        )
         }
+
         failure {
-            sh '''
-                curl -X POST \
-                  -H "Content-type: application/json" \
-                  --data "{\"text\":\" Pipeline failed — ${IMAGE_REF}. Check Jenkins logs.\"}" \
-                  $SLACK_WEBHOOK
-            '''
+            slackSend(
+            channel: '#argocd-notification',
+            color: 'danger',
+            tokenCredentialId: 'slack-bot-token',
+            message: "Pipeline failed — ${IMAGE_REF}. Check Jenkins logs."
+        )
         }
+
         always {
-            archiveArtifacts artifacts: 'sbom.spdx.json, provenance.json'
+            archiveArtifacts artifacts: 'sbom.spdx.json,provenance.json'
             cleanWs()
         }
     }
