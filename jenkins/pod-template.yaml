@@ -8,7 +8,7 @@ spec:
   volumes:
     - name: workspace-volume
       emptyDir: {}
-    - name: tools-volume        s
+    - name: tools-volume        
       emptyDir: {}
 
   initContainers:
