@@ -10,13 +10,13 @@ spec:
   restartPolicy: Never
   containers:
     - name: git
-      image: alpine/git:2.45.2
+      image: alpine/git:v2.54.0@sha256:8d6ede0b29c666ac111c732468c4d758c1c08f054f211dd98f15d421a6ffab40
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
       tty: true
       command: ["/bin/sh", "-c"]
-      args: ["apk add --no-cache github-cli yq && sleep 999999"]
+      args: ["apk add --no-cache github-cli yq  && sleep 999999"]
       resources:
         requests:
           cpu: "50m"
@@ -26,7 +26,7 @@ spec:
           memory: "128Mi"
 
     - name: crane
-      image: gcr.io/go-containerregistry/crane:debug
+      image: gcr.io/go-containerregistry/crane@sha256:1b1fb24d2b1bb27a9daf81a588157e68463876904e8e537a812edba6284fb252
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
@@ -42,7 +42,7 @@ spec:
           memory: "256Mi"
 
     - name: docker
-      image: docker:28-dind
+      image: docker:28-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
@@ -109,7 +109,7 @@ spec:
           memory: "512Mi"
 
     - name: cosign
-      image: gcr.io/projectsigstore/cosign:v2.2.4
+      image: gcr.io/projectsigstore/cosign@sha256:bed7ba33a8610c1607c16dee696f62bad168814016126abb9da01e9fb7cb2167
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
