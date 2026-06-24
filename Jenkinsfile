@@ -16,7 +16,6 @@ pipeline {
         IMAGE_TAG  = "${env.GIT_COMMIT.take(8)}"
         IMAGE_REF  = "${REGISTRY}:${IMAGE_TAG}"
         KMS_ARN    = credentials('kms-arn')
-        SONAR_TOKEN = credentials('sonarqube-token')
     }
 
     stages {
