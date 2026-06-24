@@ -4,7 +4,7 @@ metadata:
   name: require-sbom-attestation
 spec:
   validationFailureAction: Enforce
-  background: true
+  background: false
   webhookTimeoutSeconds: 30
   rules:
     - name: verify-sbom-attestation

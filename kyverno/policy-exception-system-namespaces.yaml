@@ -19,3 +19,5 @@ spec:
           namespaces:
             - kube-system
             - kyverno
+            - monitoring
+            - argocd
