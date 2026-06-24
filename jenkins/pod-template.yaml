@@ -4,19 +4,31 @@ metadata:
   labels:
     jenkins-agent: slsa-pipeline
 spec:
-  volumes:
-  - name: workspace-volume
-    emptyDir: {}
   restartPolicy: Never
+  volumes:
+    - name: workspace-volume
+      emptyDir: {}
+    - name: tools-volume        s
+      emptyDir: {}
+
+  initContainers:
+    - name: install-sleep
+      image: busybox:1.36.1
+      command: ["sh", "-c", "cp /bin/sleep /tools/sleep && chmod 755 /tools/sleep"]
+      volumeMounts:
+        - name: tools-volume
+          mountPath: /tools
+
   containers:
+   
     - name: git
       image: alpine/git:v2.54.0@sha256:8d6ede0b29c666ac111c732468c4d758c1c08f054f211dd98f15d421a6ffab40
+      command: ["/bin/sh", "-c"]
+      args: ["apk add --no-cache github-cli yq && sleep 999999"]
+      tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-      tty: true
-      command: ["/bin/sh", "-c"]
-      args: ["apk add --no-cache github-cli yq  && sleep 999999"]
       resources:
         requests:
           cpu: "50m"
@@ -24,15 +36,16 @@ spec:
         limits:
           cpu: "200m"
           memory: "128Mi"
+
 
     - name: crane
       image: gcr.io/go-containerregistry/crane@sha256:1b1fb24d2b1bb27a9daf81a588157e68463876904e8e537a812edba6284fb252
-      volumeMounts:
-        - name: workspace-volume
-          mountPath: /home/jenkins/agent
       command: ["sleep"]
       args: ["999999"]
       tty: true
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
       resources:
         requests:
           cpu: "50m"
@@ -41,17 +54,18 @@ spec:
           cpu: "200m"
           memory: "128Mi"
 
+
     - name: docker
       image: docker:28-dind@sha256:2a232a42256f70d78e3cc5d2b5d6b3276710a0de0596c145f627ecfae90282ac
-      volumeMounts:
-        - name: workspace-volume
-          mountPath: /home/jenkins/agent
       env:
-      - name: DOCKER_TLS_CERTDIR
-        value: ""
+        - name: DOCKER_TLS_CERTDIR
+          value: ""
       tty: true
       securityContext:
         privileged: true
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
       resources:
         requests:
           cpu: "300m"
@@ -62,12 +76,12 @@ spec:
 
     - name: trivy
       image: aquasec/trivy:0.71.2@sha256:f5d0e600ecda7449e2a9b272805aef698631d3bb3f3a739a750de2c6819acdc9
-      volumeMounts:
-        - name: workspace-volume
-          mountPath: /home/jenkins/agent
       command: ["sleep"]
       args: ["999999"]
       tty: true
+      volumeMounts:
+        - name: workspace-volume
+          mountPath: /home/jenkins/agent
       resources:
         requests:
           cpu: "100m"
@@ -78,12 +92,14 @@ spec:
 
     - name: syft
       image: anchore/syft:v1.45.1@sha256:c6d5719f48f5a5986acf2847eb1ed7c53176e712d5721fcd156184cfb262f6eb
+      command: ["/tools/sleep"]
+      args: ["999999"]
+      tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-      command: ["sleep"]
-      args: ["999999"]
-      tty: true
+        - name: tools-volume
+          mountPath: /tools
       resources:
         requests:
           cpu: "100m"
@@ -94,12 +110,14 @@ spec:
 
     - name: grype
       image: anchore/grype:v0.114.0@sha256:7a9fc7f89ccef78ae5a7691a115d3f0d41b1f319d589dd8cc1dcb9ab3f01dd28
+      command: ["/tools/sleep"]
+      args: ["999999"]
+      tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-      command: ["sleep"]
-      args: ["999999"]
-      tty: true
+        - name: tools-volume
+          mountPath: /tools
       resources:
         requests:
           cpu: "150m"
@@ -110,12 +128,14 @@ spec:
 
     - name: cosign
       image: gcr.io/projectsigstore/cosign@sha256:bed7ba33a8610c1607c16dee696f62bad168814016126abb9da01e9fb7cb2167
+      command: ["/tools/sleep"]
+      args: ["999999"]
+      tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-      command: ["sleep"]
-      args: ["999999"]
-      tty: true
+        - name: tools-volume
+          mountPath: /tools
       resources:
         requests:
           cpu: "50m"
