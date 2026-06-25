@@ -24,6 +24,12 @@ pipeline {
             steps {
                 container('docker') {
                     sh '''
+                        "Waiting for Docker daemon..."
+                        until docker info > /dev/null 2>&1; do
+                        echo "Docker not ready yet, retrying in 2s..."
+                        sleep 2
+                        done
+                        echo "Docker daemon is ready"
                         docker build -t ${IMAGE_REF} .
                         docker save ${IMAGE_REF} -o image.tar
                     '''
