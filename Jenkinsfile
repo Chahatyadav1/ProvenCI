@@ -208,7 +208,7 @@ EOF
             steps {
                 container('git'){
                 sh 'git clone -b main https://github.com/Chahatyadav1/ProvenCI.git'
-                dir("ProvenCI/k8s") {
+                dir("ProvenCI") {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
                             git checkout main
@@ -218,7 +218,7 @@ EOF
                             git config --global user.email "chahatyadav@gmail.com"
                             git config --global user.name "Chahat Yadav"
                             git remote set-url origin https://$GITHUB_TOKEN@github.com/Chahatyadav1/ProvenCI.git
-                            git add deployment.yaml
+                            git add k8s/deployment.yaml
                             git diff --cached --quiet || git commit -m "Updated dashboard image"
                             git push origin --delete dev || true
                             git push -u origin dev
