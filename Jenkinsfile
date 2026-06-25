@@ -37,7 +37,7 @@ pipeline {
             }
         }
 
-        stage('Filesystem / Image Scan — Trivy') {
+        stage('Image Scan — Trivy') {
             when { branch 'dev' }
             steps {
                 container('trivy') {
@@ -83,7 +83,7 @@ pipeline {
             }
         }
 
-        stage('Generate SBOM — Syft') {
+        stage('Syft') {
             when { branch 'dev' }
             steps {
                 container('syft') {
@@ -103,7 +103,7 @@ pipeline {
             }
         }
 
-        stage('SBOM Vulnerability Scan — Grype') {
+        stage('Grype') {
             when { branch 'dev' }
             steps {
                 container('grype') {
@@ -116,7 +116,7 @@ pipeline {
             }
         }
 
-        stage('Sign Image — Cosign') {
+        stage('Cosign') {
             environment {
                 AWS_REGION         = 'ap-south-1'
                 AWS_DEFAULT_REGION = 'ap-south-1'
@@ -161,7 +161,7 @@ pipeline {
             }
         }
 
-        stage('Generate + Attach SLSA Provenance') {
+        stage('Attach SLSA Provenance') {
             environment {
                 AWS_REGION         = 'ap-south-1'
                 AWS_DEFAULT_REGION = 'ap-south-1'
@@ -203,7 +203,7 @@ EOF
             }
         }
 
-        stage('K8S - Update Image Tag') {
+        stage('Update Image Tag') {
             when { branch 'dev' }
             steps {
                 container('git') {
@@ -227,7 +227,7 @@ EOF
                     }
                 }
             }
-        stage('K8S - Raise PR') {
+        stage('Raise PR') {
             when { branch 'dev' }
             steps {
                 container('git') {
