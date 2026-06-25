@@ -124,10 +124,7 @@ pipeline {
                         usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
                             echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
-                            cosign sign \
-                              --yes \
-                              --key awskms://${KMS_ARN} \
-                              ${IMAGE_REF}@${IMAGE_DIGEST}
+                            cosign sign --yes --key awskms:///${KMS_ARN} ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
                         }
                 }
@@ -146,7 +143,7 @@ pipeline {
                               --yes \
                               --predicate sbom.spdx.json \
                               --type https://spdx.dev/Document \
-                              --key awskms://${KMS_ARN} \
+                              --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
                         }
