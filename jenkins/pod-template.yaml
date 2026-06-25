@@ -10,25 +10,6 @@ spec:
   volumes:
     - name: workspace-volume
       emptyDir: {}
-    - name: tools-volume
-      emptyDir: {}
-
- 
-  initContainers:
-    - name: install-sleep
-      image: busybox:unstable-musl@sha256:8635836765b0c4c43970660219739baa58b0883c2e429e4b8918f7dd1519455c
-      command:
-        - sh
-        - -c
-        - |
-          set -ex
-          cp /bin/sleep /tools/sleep
-          chmod 755 /tools/sleep
-          ls -la /tools/sleep
-          echo "install-sleep: done"
-      volumeMounts:
-        - name: tools-volume
-          mountPath: /tools
 
   containers:
 
@@ -86,7 +67,6 @@ spec:
           cpu: "1500m"
           memory: "1.5Gi"
 
-
     - name: trivy
       image: aquasec/trivy:0.71.2@sha256:f5d0e600ecda7449e2a9b272805aef698631d3bb3f3a739a750de2c6819acdc9
       command: ["sleep"]
@@ -103,17 +83,14 @@ spec:
           cpu: "500m"
           memory: "512Mi"
 
-
     - name: syft
       image: anchore/syft:v1.45.1@sha256:c6d5719f48f5a5986acf2847eb1ed7c53176e712d5721fcd156184cfb262f6eb
-      command: ["/tools/sleep"]
-      args: ["999999"]
+      command: ["sh", "-c"]
+      args: ["sleep 999999"]
       tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-        - name: tools-volume
-          mountPath: /tools
       resources:
         requests:
           cpu: "100m"
@@ -122,17 +99,14 @@ spec:
           cpu: "250m"
           memory: "256Mi"
 
-
     - name: grype
       image: anchore/grype:v0.114.0@sha256:7a9fc7f89ccef78ae5a7691a115d3f0d41b1f319d589dd8cc1dcb9ab3f01dd28
-      command: ["/tools/sleep"]
-      args: ["999999"]
+      command: ["sh", "-c"]
+      args: ["sleep 999999"]
       tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-        - name: tools-volume
-          mountPath: /tools
       resources:
         requests:
           cpu: "150m"
@@ -141,17 +115,14 @@ spec:
           cpu: "500m"
           memory: "512Mi"
 
-
     - name: cosign
       image: gcr.io/projectsigstore/cosign@sha256:bed7ba33a8610c1607c16dee696f62bad168814016126abb9da01e9fb7cb2167
-      command: ["/tools/sleep"]
-      args: ["999999"]
+      command: ["sh", "-c"]
+      args: ["sleep 999999"]
       tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
-        - name: tools-volume
-          mountPath: /tools
       resources:
         requests:
           cpu: "50m"
