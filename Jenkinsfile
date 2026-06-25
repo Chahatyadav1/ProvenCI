@@ -24,7 +24,7 @@ pipeline {
             steps {
                 container('docker') {
                     sh '''
-                        "Waiting for Docker daemon..."
+                        echo "Waiting for Docker daemon..."
                         until docker info > /dev/null 2>&1; do
                         echo "Docker not ready yet, retrying in 2s..."
                         sleep 2
