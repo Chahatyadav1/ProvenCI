@@ -22,7 +22,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: dashboard
-          image: "docker.io/chahatyadav1/dashboard:30819870"
+          image: "docker.io/chahatyadav1/dashboard:f865c40e"
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
