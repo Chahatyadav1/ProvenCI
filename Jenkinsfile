@@ -62,7 +62,7 @@ pipeline {
                             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                             docker push ${IMAGE_REF}
                         '''
-                    }
+                        }
                 }
             }
         }
@@ -132,7 +132,7 @@ pipeline {
                               --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
-                    }
+                        }
                 }
             }
         }
@@ -156,7 +156,7 @@ pipeline {
                               --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
-                    }
+                        }
                 }
             }
         }
@@ -198,19 +198,19 @@ EOF
                               --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
-                    }
+                        }
                 }
             }
         }
 
-   stage('K8S - Update Image Tag') {
+        stage('K8S - Update Image Tag') {
             when { branch 'dev' }
             steps {
-                container('git'){
-                sh 'git clone -b main https://github.com/Chahatyadav1/ProvenCI.git'
-                dir("ProvenCI") {
-                    withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-                        sh '''
+                container('git') {
+                    sh 'git clone -b main https://github.com/Chahatyadav1/ProvenCI.git'
+                    dir('ProvenCI') {
+                        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
+                            sh '''
                             git checkout main
                             git checkout -b dev
                             yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' k8s/deployment.yaml
@@ -223,11 +223,11 @@ EOF
                             git push origin --delete dev || true
                             git push -u origin dev
                         '''
+                        }
                     }
                 }
             }
         }
-   }
         stage('K8S - Raise PR') {
             when { branch 'dev' }
             steps {
