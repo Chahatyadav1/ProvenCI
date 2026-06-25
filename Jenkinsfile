@@ -205,8 +205,8 @@ EOF
 
    stage('K8S - Update Image Tag') {
             when { branch 'dev' }
-            container(git){
             steps {
+                container('git'){
                 sh 'git clone -b main https://github.com/Chahatyadav1/ProvenCI.git'
                 dir("ProvenCI/k8s") {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
