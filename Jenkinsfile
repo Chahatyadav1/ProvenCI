@@ -208,9 +208,9 @@ EOF
             steps {
                 container('git') {
                     sh 'git clone -b main https://github.com/Chahatyadav1/ProvenCI.git'
-                    dir('ProvenCI') {
                         withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                             sh '''
+                            cd ProvenCI
                             git checkout main
                             git checkout -b dev
                             yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' k8s/deployment.yaml
@@ -227,7 +227,6 @@ EOF
                     }
                 }
             }
-        }
         stage('K8S - Raise PR') {
             when { branch 'dev' }
             steps {
