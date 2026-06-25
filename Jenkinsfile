@@ -103,18 +103,18 @@ pipeline {
             }
         }
 
-        // stage('SBOM Vulnerability Scan — Grype') {
-        //     when { branch 'dev' }
-        //     steps {
-        //         container('grype') {
-        //             sh '''
-        //                 grype sbom:sbom.spdx.json \
-        //                   --fail-on critical \
-        //                   --output table
-        //             '''
-        //         }
-        //     }
-        // }
+        stage('SBOM Vulnerability Scan — Grype') {
+            when { branch 'dev' }
+            steps {
+                container('grype') {
+                    sh '''
+                        grype sbom:sbom.spdx.json \
+                          --fail-on critical \
+                          --output table
+                    '''
+                }
+            }
+        }
 
         stage('Sign Image — Cosign') {
             environment {
