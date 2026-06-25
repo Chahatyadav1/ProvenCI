@@ -1,17 +1,21 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: dashboard
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  name: kyverno
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/Chahatyadav1/ProvenCI.git
-    path: k8s
-    targetRevision: main
+    chart: kyverno
+    repoURL: https://kyverno.github.io/kyverno/
+    targetRevision: 3.8.1
+    helm:
+      releaseName: kyverno
   destination:
-    server: https://kubernetes.default.svc
-    namespace: dashboard
+    server: "https://kubernetes.default.svc"
+    namespace: kyverno
   syncPolicy:
     automated:
       prune: true
