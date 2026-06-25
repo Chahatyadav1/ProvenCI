@@ -5,25 +5,45 @@ metadata:
     jenkins-agent: slsa-pipeline
 spec:
   restartPolicy: Never
+  automountServiceAccountToken: false
   tolerations:
     - operator: Exists
+
   volumes:
     - name: workspace-volume
       emptyDir: {}
+    - name: tool-bin
+      emptyDir: {}
+
+  initContainers:
+    - name: install-git-tools
+      image: alpine:3.19
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          set -ex
+          apk add --no-cache github-cli yq
+          cp /usr/bin/gh /tool-bin/gh
+          cp /usr/bin/yq /tool-bin/yq
+      volumeMounts:
+        - name: tool-bin
+          mountPath: /tool-bin
 
   containers:
 
     - name: git
       image: alpine/git:v2.54.0@sha256:8d6ede0b29c666ac111c732468c4d758c1c08f054f211dd98f15d421a6ffab40
-      command: ["/bin/sh", "-c"]
-      args:
-        - |
-          apk add --no-cache github-cli yq
-          sleep 999999
+      command: ["sleep"]
+      args: ["999999"]
       tty: true
+      env:
+        - name: PATH
+          value: "/tool-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
+        - name: tool-bin
+          mountPath: /tool-bin
       resources:
         requests:
           cpu: "50m"
@@ -83,6 +103,7 @@ spec:
           cpu: "500m"
           memory: "512Mi"
 
+
     - name: syft
       image: alpine:3.19
       command: ["/bin/sh", "-c"]
@@ -129,7 +150,9 @@ spec:
       args:
         - |
           apk add --no-cache curl
-          curl -sSfL https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64 -o /usr/local/bin/cosign
+          curl -sSfL \
+            https://github.com/sigstore/cosign/releases/download/v2.4.1/cosign-linux-amd64 \
+            -o /usr/local/bin/cosign
           chmod +x /usr/local/bin/cosign
           sleep 999999
       tty: true

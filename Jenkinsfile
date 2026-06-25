@@ -12,10 +12,10 @@ pipeline {
     }
 
     environment {
-        REGISTRY   = 'docker.io/chahatyadav1/dashboard'
-        IMAGE_TAG  = "${env.GIT_COMMIT.take(8)}"
-        IMAGE_REF  = "${REGISTRY}:${IMAGE_TAG}"
-        KMS_ARN    = credentials('kms-arn')
+        REGISTRY  = 'docker.io/chahatyadav1/dashboard'
+        IMAGE_TAG = "${env.GIT_COMMIT?.take(8) ?: 'unknown'}"
+        IMAGE_REF = "${REGISTRY}:${IMAGE_TAG}"
+        KMS_ARN   = credentials('kms-arn')
     }
 
     stages {
@@ -26,8 +26,8 @@ pipeline {
                     sh '''
                         echo "Waiting for Docker daemon..."
                         until docker info > /dev/null 2>&1; do
-                        echo "Docker not ready yet, retrying in 2s..."
-                        sleep 2
+                            echo "Docker not ready yet, retrying in 2s..."
+                            sleep 2
                         done
                         echo "Docker daemon is ready"
                         docker build -t ${IMAGE_REF} .
@@ -62,7 +62,7 @@ pipeline {
                             echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                             docker push ${IMAGE_REF}
                         '''
-                        }
+                    }
                 }
             }
         }
@@ -117,8 +117,8 @@ pipeline {
         }
 
         stage('Sign Image — Cosign') {
-            environment{
-                AWS_REGION = 'ap-south-1' 
+            environment {
+                AWS_REGION         = 'ap-south-1'
                 AWS_DEFAULT_REGION = 'ap-south-1'
             }
             when { branch 'dev' }
@@ -128,17 +128,19 @@ pipeline {
                         usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
                         sh '''
                             echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
-                            cosign sign --yes --key awskms:///${KMS_ARN} ${IMAGE_REF}@${IMAGE_DIGEST}
+                            cosign sign --yes \
+                              --key awskms:///${KMS_ARN} \
+                              ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
-                        }
+                    }
                 }
             }
         }
 
         stage('Attest SBOM — Cosign') {
-            environment{
-                AWS_REGION = 'ap-south-1' 
-                AWS_DEFAULT_REGION = 'ap-south-1' 
+            environment {
+                AWS_REGION         = 'ap-south-1'
+                AWS_DEFAULT_REGION = 'ap-south-1'
             }
             when { branch 'dev' }
             steps {
@@ -154,15 +156,15 @@ pipeline {
                               --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
-                        }
+                    }
                 }
             }
         }
 
         stage('Generate + Attach SLSA Provenance') {
-            environment{
-                AWS_REGION = 'ap-south-1' 
-                AWS_DEFAULT_REGION = 'ap-south-1'               
+            environment {
+                AWS_REGION         = 'ap-south-1'
+                AWS_DEFAULT_REGION = 'ap-south-1'
             }
             when { branch 'dev' }
             steps {
@@ -196,7 +198,7 @@ EOF
                               --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
-                        }
+                    }
                 }
             }
         }
@@ -207,15 +209,22 @@ EOF
                 container('git') {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
+                            git config --global --add safe.directory ${WORKSPACE}
+                            cd ${WORKSPACE}
+
                             git config user.email "jenkins@company.com"
                             git config user.name "jenkins"
                             git remote set-url origin https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git
+                            git fetch origin dev
                             git checkout dev
-                            git pull --rebase origin dev
+                            git reset --hard origin/dev
+
                             yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
                               k8s/deployment.yaml
+
                             git add k8s/deployment.yaml
-                            git diff --cached --quiet || git commit -m "update docker image"
+                            git diff --cached --quiet || \
+                              git commit -m "ci: update image to ${IMAGE_REF} [skip ci]"
                             git push origin dev
                         '''
                     }
@@ -229,12 +238,23 @@ EOF
                 container('git') {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
-                            gh pr create \
+                            export GH_TOKEN=${GITHUB_TOKEN}
+
+                            EXISTING=$(gh pr list \
                               --repo Chahatyadav1/ProvenCI \
-                              --title "Updated Docker Image Tag - Build $BUILD_ID" \
-                              --body "This PR updates the docker image tag for build $BUILD_ID" \
-                              --head dev \
-                              --base main
+                              --head dev --base main \
+                              --json number --jq length)
+
+                            if [ "$EXISTING" -gt 0 ]; then
+                                echo "PR already exists — skipping creation"
+                            else
+                                gh pr create \
+                                  --repo Chahatyadav1/ProvenCI \
+                                  --title "ci: update image tag — build ${BUILD_ID}" \
+                                  --body "Updates image to ${IMAGE_REF} for build ${BUILD_ID}" \
+                                  --head dev \
+                                  --base main
+                            fi
                         '''
                     }
                 }
