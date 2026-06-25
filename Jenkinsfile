@@ -181,7 +181,7 @@ EOF
                               --yes \
                               --predicate provenance.json \
                               --type slsaprovenance \
-                              --key awskms://${KMS_ARN} \
+                              --key awskms:///${KMS_ARN} \
                               ${IMAGE_REF}@${IMAGE_DIGEST}
                         '''
                         }
