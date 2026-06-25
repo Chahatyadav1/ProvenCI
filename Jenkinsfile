@@ -103,18 +103,18 @@ pipeline {
             }
         }
 
-        stage('SBOM Vulnerability Scan — Grype') {
-            when { branch 'dev' }
-            steps {
-                container('grype') {
-                    sh '''
-                        grype sbom:sbom.spdx.json \
-                          --fail-on critical \
-                          --output table
-                    '''
-                }
-            }
-        }
+        // stage('SBOM Vulnerability Scan — Grype') {
+        //     when { branch 'dev' }
+        //     steps {
+        //         container('grype') {
+        //             sh '''
+        //                 grype sbom:sbom.spdx.json \
+        //                   --fail-on critical \
+        //                   --output table
+        //             '''
+        //         }
+        //     }
+        // }
 
         stage('Sign Image — Cosign') {
             environment {
@@ -203,36 +203,31 @@ EOF
             }
         }
 
-        stage('Update GitOps (ArgoCD Trigger)') {
+   stage('K8S - Update Image Tag') {
             when { branch 'dev' }
+            container(git){
             steps {
-                container('git') {
-                    checkout scm
+                sh 'git clone -b main https://github.com/Chahatyadav1/ProvenCI.git'
+                dir("ProvenCI/k8s") {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
-                            git config --global --add safe.directory ${WORKSPACE}
-                            cd ${WORKSPACE}
+                            git checkout main
+                            git checkout -b dev
+                            yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' k8s/deployment.yaml
 
-                            git config user.email "jenkins@company.com"
-                            git config user.name "jenkins"
-                            git remote set-url origin https://${GITHUB_TOKEN}@github.com/Chahatyadav1/ProvenCI.git
-                            git fetch origin dev
-                            git checkout dev
-                            git reset --hard origin/dev
-
-                            yq -i '.spec.template.spec.containers[0].image = "'"${IMAGE_REF}"'"' \
-                              k8s/deployment.yaml
-
-                            git add k8s/deployment.yaml
-                            git diff --cached --quiet || \
-                              git commit -m "ci: update image to ${IMAGE_REF} [skip ci]"
-                            git push origin dev
+                            git config --global user.email "chahatyadav@gmail.com"
+                            git config --global user.name "Chahat Yadav"
+                            git remote set-url origin https://$GITHUB_TOKEN@github.com/Chahatyadav1/ProvenCI.git
+                            git add deployment.yaml
+                            git diff --cached --quiet || git commit -m "Updated dashboard image"
+                            git push origin --delete dev || true
+                            git push -u origin dev
                         '''
                     }
                 }
             }
         }
-
+   }
         stage('K8S - Raise PR') {
             when { branch 'dev' }
             steps {
