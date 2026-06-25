@@ -10,6 +10,23 @@ spec:
   volumes:
     - name: workspace-volume
       emptyDir: {}
+    - name: tools-volume
+      emptyDir: {}
+
+  initContainers:
+    - name: install-sleep
+      image: alpine:3.19
+      command:
+        - sh
+        - -c
+        - |
+          apk add --no-cache busybox-static
+          cp /bin/busybox.static /tools/sleep
+          chmod 755 /tools/sleep
+          echo "install-sleep: done"
+      volumeMounts:
+        - name: tools-volume
+          mountPath: /tools
 
   containers:
 
@@ -85,12 +102,14 @@ spec:
 
     - name: syft
       image: anchore/syft:v1.45.1@sha256:c6d5719f48f5a5986acf2847eb1ed7c53176e712d5721fcd156184cfb262f6eb
-      command: ["sh", "-c"]
-      args: ["sleep 999999"]
+      command: ["/tools/sleep"]
+      args: ["999999"]
       tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
+        - name: tools-volume
+          mountPath: /tools
       resources:
         requests:
           cpu: "100m"
@@ -101,12 +120,14 @@ spec:
 
     - name: grype
       image: anchore/grype:v0.114.0@sha256:7a9fc7f89ccef78ae5a7691a115d3f0d41b1f319d589dd8cc1dcb9ab3f01dd28
-      command: ["sh", "-c"]
-      args: ["sleep 999999"]
+      command: ["/tools/sleep"]
+      args: ["999999"]
       tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
+        - name: tools-volume
+          mountPath: /tools
       resources:
         requests:
           cpu: "150m"
@@ -117,12 +138,14 @@ spec:
 
     - name: cosign
       image: gcr.io/projectsigstore/cosign@sha256:bed7ba33a8610c1607c16dee696f62bad168814016126abb9da01e9fb7cb2167
-      command: ["sh", "-c"]
-      args: ["sleep 999999"]
+      command: ["/tools/sleep"]
+      args: ["999999"]
       tty: true
       volumeMounts:
         - name: workspace-volume
           mountPath: /home/jenkins/agent
+        - name: tools-volume
+          mountPath: /tools
       resources:
         requests:
           cpu: "50m"
