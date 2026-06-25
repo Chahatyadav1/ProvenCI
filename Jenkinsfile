@@ -117,6 +117,10 @@ pipeline {
         }
 
         stage('Sign Image — Cosign') {
+            environment{
+                AWS_REGION = 'ap-south-1' 
+                AWS_DEFAULT_REGION = 'ap-south-1'
+            }
             when { branch 'dev' }
             steps {
                 container('cosign') {
@@ -132,6 +136,10 @@ pipeline {
         }
 
         stage('Attest SBOM — Cosign') {
+            environment{
+                AWS_REGION = 'ap-south-1' 
+                AWS_DEFAULT_REGION = 'ap-south-1' 
+            }
             when { branch 'dev' }
             steps {
                 container('cosign') {
@@ -152,6 +160,10 @@ pipeline {
         }
 
         stage('Generate + Attach SLSA Provenance') {
+            environment{
+                AWS_REGION = 'ap-south-1' 
+                AWS_DEFAULT_REGION = 'ap-south-1'               
+            }
             when { branch 'dev' }
             steps {
                 container('cosign') {
