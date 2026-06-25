@@ -207,6 +207,7 @@ EOF
             when { branch 'dev' }
             steps {
                 container('git') {
+                    checkout scm
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
                             git config --global --add safe.directory ${WORKSPACE}
