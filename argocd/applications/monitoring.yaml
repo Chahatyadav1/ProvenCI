@@ -3,7 +3,7 @@ kind: Application
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
-  name: kyverno
+  name: monitoring
   namespace: argocd
 spec:
   project: default
