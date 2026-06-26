@@ -3,6 +3,7 @@ kind: Pod
 metadata:
   labels:
     jenkins-agent: slsa-pipeline
+  serviceAccountName: pod-identity
 spec:
   restartPolicy: Never
   automountServiceAccountToken: false
