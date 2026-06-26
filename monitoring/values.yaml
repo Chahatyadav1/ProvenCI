@@ -9,3 +9,20 @@ prometheus:
 alertmanager:
   service:
     type: LoadBalancer
+
+windowsMonitoring:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+coreDns:
+  enabled: false
+kubeDns:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+thanosRuler: 
+  enabled: false
