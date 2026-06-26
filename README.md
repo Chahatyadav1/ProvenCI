@@ -36,9 +36,9 @@
 ## Raise PR
 ![Raise PR](screenshots/pr.png)
 
-## ArgoCD Application Tree
+## ArgoCD Application 
 
-![ArgoCD Tree](screenshots/argocd-tree.png)
+![ArgoCD Application](screenshots/argocd-tree.png)
 
 ---
 
