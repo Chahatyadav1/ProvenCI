@@ -3,10 +3,9 @@ kind: Pod
 metadata:
   labels:
     jenkins-agent: slsa-pipeline
-  serviceAccountName: pod-identity
 spec:
+  serviceAccountName: pod-identity
   restartPolicy: Never
-  automountServiceAccountToken: false
   tolerations:
     - operator: Exists
 
