@@ -13,6 +13,8 @@ spec:
     targetRevision: 87.2.1
     helm:
       releaseName: my-kube-prometheus-stack
+      valueFiles:
+       - ../../monitoring/values.yaml
   destination:
     server: "https://kubernetes.default.svc"
     namespace: monitoring
