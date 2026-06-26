@@ -19,6 +19,49 @@
 ![Architecture Overview](https://img.shields.io/badge/View-Architecture_Below-blue?style=flat-square)
 
 </div>
+---
+# 📸 Project Screenshots
+
+## Jenkins Pipeline
+
+![Jenkins Pipeline](screenshots/jenkins-pipeline.png)
+
+---
+
+## ArgoCD Applications
+
+![ArgoCD Applications](screenshots/argocd-applications.png)
+
+---
+## Raise PR
+![Raise PR](screenshots/pr.png)
+
+## ArgoCD Application Tree
+
+![ArgoCD Tree](screenshots/argocd-tree.png)
+
+---
+
+## Kyverno Policy Enforcement
+
+![Kyverno Policies](screenshots/kyverno-policies.png)
+
+---
+
+## Successful Image Verification
+
+![Cosign Verification](screenshots/cosign-verification.png)
+
+---
+## Slack Deployment Notification
+
+![Slack Notification](screenshots/slack-notification.png)
+
+---
+
+## Running Application
+
+![Dashboard](screenshots/dashboard.png)
 
 ---
 
