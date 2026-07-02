@@ -53,7 +53,7 @@
 ![Cosign Verification](screenshots/cosign-verification.png)
 
 ---
-## Slack Deployment Notification
+## Slack Pipeline Notification
 
 ![Slack Notification](screenshots/slack-notification.png)
 
