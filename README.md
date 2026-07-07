@@ -225,13 +225,6 @@ spec:
     seccompProfile:
       type: RuntimeDefault              #  Syscall filtering via seccomp
 ```
-
-| Setting | Value | Why It Matters |
-|---------|-------|----------------|
-| `automountServiceAccountToken` | `false` | Prevents the container from accessing the Kubernetes API — unnecessary attack surface eliminated |
-| `runAsNonRoot` | `true` | Enforces non-root execution at the pod scheduler level |
-| `seccompProfile.type` | `RuntimeDefault` | Applies the container runtime's default syscall allowlist, blocking dangerous syscalls like `ptrace` |
-
 ---
 
 ### Container-Level Security Context
@@ -243,43 +236,6 @@ securityContext:
     drop:
       - ALL                         #  Zero Linux capabilities
 ```
-
-| Setting | Value | Why It Matters |
-|---------|-------|----------------|
-| `allowPrivilegeEscalation` | `false` | Prevents `setuid` / `setgid` binaries from elevating privileges |
-| `capabilities.drop` | `ALL` | Strips every Linux capability (NET_RAW, SYS_ADMIN, etc.) — minimal attack surface |
-
----
-
-### Base Image Choice
-
-```dockerfile
-FROM nginxinc/nginx-unprivileged:alpine3.23
-```
-
-- **Non-privileged nginx**: runs on port `8080` as a non-root user — no `setcap` tricks needed
-- **Alpine base**: minimal OS footprint reduces the CVE attack surface dramatically
-- **Official nginxinc image**: maintained by NGINX Inc., not a community fork
-
----
-
-### Resource Limits
-
-```yaml
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 250m
-    memory: 256Mi
-```
-
-Every container defines both `requests` and `limits`, preventing noisy-neighbour resource exhaustion and making the workload eligible for the Kubernetes scheduler's Quality of Service guarantees (`Burstable` tier).
-
-
-Separate `readiness` and `liveness` probes ensure the pod only receives traffic when truly ready, and is automatically restarted if it becomes unhealthy — without human intervention.
-
 ---
 
 ## 🔏 Kyverno Policy Enforcement
@@ -437,46 +393,6 @@ alertmanager:
 The **`sbom.spdx.json`** and **`provenance.json`** files are archived as Jenkins build artifacts on every run for compliance and audit trail purposes. `cleanWs()` ensures no secrets or build artifacts linger on the agent pod between runs.
 
 ---
-
-## 📁 Repository Structure
-
-```
-ProvenCI/
-├── Dockerfile                          # Non-root nginx:alpine image
-├── Jenkinsfile                         # Full 12-stage pipeline definition
-│
-├── app/
-│   └── dashboard.html                  # SecurePipe CI/CD monitoring dashboard
-│
-├── k8s/
-│   ├── namespace.yaml                  # Namespace with restricted PSS labels
-│   ├── deployment.yaml                 # Hardened Deployment (non-root, no caps)
-│   └── service.yaml                    # LoadBalancer Service
-│
-├── kyverno/
-│   ├── require-signed-images.yaml      # ClusterPolicy: enforce Cosign signature
-│   ├── require-sbom-attestation.yaml   # ClusterPolicy: enforce SPDX-2.3 SBOM
-│   └── policy-exception-system-namespaces.yaml  # PolicyException for infra NS
-│
-├── argocd/
-│   ├── appofapp.yaml                   # Bootstrap: root App of Apps
-│   └── applications/
-│       ├── kyverno-app.yaml            # Kyverno Helm (wave 1)
-│       ├── kyverno-policy-app.yaml     # Kyverno policies (wave 2)
-│       ├── monitoring.yaml             # kube-prometheus-stack (wave 0)
-│       ├── service-monitorapp.yaml     # ArgoCD ServiceMonitors (wave 2)
-│       └── application.yaml            # Dashboard app (wave 3)
-│
-├── jenkins/
-│   └── pod-template.yaml               # EKS agent pod: 7 tool containers
-│
-└── monitoring/
-    ├── values.yaml                     # Prometheus stack Helm overrides
-    └── service-monitor.yaml            # 6 ServiceMonitors for ArgoCD
-```
-
----
-
 ## ✅ Prerequisites
 
 | Tool | Version | Purpose |
