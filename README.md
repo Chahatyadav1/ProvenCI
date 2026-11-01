@@ -142,16 +142,16 @@
         │
         ▼
   ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-  │ 9. SLSA      │───►│ 10. Update   │───►│ 11. Raise    │───►│ 12. Manual   │
-  │    Provenance│    │     Image    │    │     PR       │    │    Approval  │
-  │  Attestation │    │     Tag      │    │  (dev→main)  │    │ (main branch)│
+  │              │───►│ 10. Update   │───►│ 11. Raise    │───►│ 12. Manual   │
+  │              │    │     Image    │    │     PR       │    │    Approval  │
+  │              │    │     Tag      │    │  (dev→main)  │    │ (main branch)│
   └──────────────┘    └──────────────┘    └──────────────┘    └──────────────┘
         │
         ▼
   ArgoCD detects main branch change → Kyverno validates signature + SBOM → Deploy ✅
 ```
 
----
+----
 
 ## ☁️ Infrastructure — AWS
 
