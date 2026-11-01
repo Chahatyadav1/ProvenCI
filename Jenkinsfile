@@ -160,49 +160,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Attach SLSA Provenance') {
-            environment {
-                AWS_REGION         = 'ap-south-1'
-                AWS_DEFAULT_REGION = 'ap-south-1'
-            }
-            when { branch 'dev' }
-            steps {
-                container('cosign') {
-                    withCredentials([usernamePassword(credentialsId: 'docker-creds',
-                        usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
-                        sh '''
-                            echo "$DOCKER_PASS" | cosign login docker.io -u "$DOCKER_USER" --password-stdin
-
-                            cat <<EOF > provenance.json
-{
-  "buildType": "https://github.com/Chahatyadav1/ProvenCI",
-  "builder": { "id": "https://jenkins.company.com" },
-  "invocation": {
-    "configSource": {
-      "uri": "${GIT_URL}",
-      "digest": { "sha1": "${GIT_COMMIT}" },
-      "entryPoint": "Jenkinsfile"
-    }
-  },
-  "metadata": {
-    "buildStartedOn":  "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "buildFinishedOn": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  }
-}
-EOF
-                            cosign attest \
-                              --yes \
-                              --predicate provenance.json \
-                              --type slsaprovenance \
-                              --key awskms:///${KMS_ARN} \
-                              ${IMAGE_REF}@${IMAGE_DIGEST}
-                        '''
-                        }
-                }
-            }
-        }
-
         stage('Update Image Tag') {
             when { branch 'dev' }
             steps {
