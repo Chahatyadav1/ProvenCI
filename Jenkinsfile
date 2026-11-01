@@ -24,12 +24,6 @@ pipeline {
             steps {
                 container('docker') {
                     sh '''
-                        echo "Waiting for Docker daemon..."
-                        until docker info > /dev/null 2>&1; do
-                            echo "Docker not ready yet, retrying in 2s..."
-                            sleep 2
-                        done
-                        echo "Docker daemon is ready"
                         docker build -t ${IMAGE_REF} .
                         docker save ${IMAGE_REF} -o image.tar
                     '''
@@ -191,22 +185,12 @@ pipeline {
                     withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
                         sh '''
                             export GH_TOKEN=${GITHUB_TOKEN}
-
-                            EXISTING=$(gh pr list \
-                              --repo Chahatyadav1/ProvenCI \
-                              --head dev --base main \
-                              --json number --jq length)
-
-                            if [ "$EXISTING" -gt 0 ]; then
-                                echo "PR already exists — skipping creation"
-                            else
                                 gh pr create \
                                   --repo Chahatyadav1/ProvenCI \
                                   --title "ci: update image tag — build ${BUILD_ID}" \
                                   --body "Updates image to ${IMAGE_REF} for build ${BUILD_ID}" \
                                   --head dev \
                                   --base main
-                            fi
                         '''
                     }
                 }
